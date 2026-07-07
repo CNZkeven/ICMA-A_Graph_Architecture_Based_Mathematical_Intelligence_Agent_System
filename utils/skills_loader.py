@@ -20,6 +20,8 @@ DOMAIN_ALIASES = {
     "统计推断": [
         "最大似然", "MLE", "置信区间", "假设检验", "拒绝域", "显著性水平",
         "p值", "p-value", "样本", "估计量", "无偏", "方差估计",
+        "极大似然", "矩估计", "Fisher", "C-R", "第二类错误", "功效",
+        "似然比", "检验统计量", "临界值",
     ],
     "复分析": ["留数", "解析", "全纯", "Cauchy", "柯西", "Laurent", "洛朗", "极点"],
     "抽象代数": ["有限域", "群", "环", "理想", "同态", "子群", "正规子群", "域扩张"],
@@ -29,12 +31,52 @@ DOMAIN_ALIASES = {
     "泛函分析": ["Banach", "Hilbert", "有界线性算子", "泛函", "弱收敛", "紧算子"],
     "拓扑学": ["拓扑", "开集", "闭集", "紧致", "连通", "同胚", "基本群"],
     "微分几何": ["流形", "曲率", "测地线", "联络", "切空间", "第一基本形式"],
-    "数值分析": ["插值", "Newton", "迭代", "误差", "数值积分", "Runge-Kutta"],
+    "数值分析": [
+        "插值", "Newton", "迭代", "误差", "数值积分", "Runge-Kutta",
+        "中心差分", "数值微分", "复化", "梯形公式", "Simpson", "Romberg",
+        "Frobenius", "条件数", "Euler", "稳定区间", "Doolittle", "LU分解",
+    ],
     "测度积分": ["测度", "可测", "Lebesgue", "勒贝格", "几乎处处", "支配收敛", "Fatou"],
     "运筹学": ["线性规划", "单纯形", "对偶", "运输问题", "排队", "决策树"],
     "离散数学": ["图", "树", "组合", "递推", "生成函数", "布尔", "命题逻辑"],
-    "线性回归": ["回归", "最小二乘", "OLS", "残差", "t检验", "F检验", "R方"],
+    "线性回归": [
+        "回归", "最小二乘", "OLS", "残差", "t检验", "F检验", "R方",
+        "\\beta", "标准误", "SSE", "SSR", "SST", "S_{xx}", "S_{xy}",
+        "ANOVA", "方差分析表", "均值响应", "预测区间", "Gauss-Markov",
+        "Durbin-Watson", "BLUE", "偏F", "多重共线性", "VIF",
+    ],
 }
+
+
+DOMAIN_PRIORITY_TERMS = {
+    "线性回归": [
+        "回归", "OLS", "最小二乘", "\\beta", "标准误", "SSE", "SSR",
+        "ANOVA", "方差分析表", "均值响应", "预测区间", "Gauss-Markov",
+        "Durbin-Watson", "VIF", "BLUE", "偏F",
+    ],
+    "统计推断": [
+        "统计推断", "极大似然", "最大似然", "MLE", "矩估计", "估计量",
+        "置信区间", "假设检验", "显著性水平", "拒绝域", "p值", "p-value",
+        "第二类错误", "功效", "C-R", "Fisher", "似然比",
+    ],
+    "数值分析": [
+        "数值分析", "数值积分", "数值微分", "中心差分", "复化", "梯形公式",
+        "Simpson", "Romberg", "Frobenius", "条件数", "稳定区间",
+        "显式 Euler", "Euler 法", "Doolittle", "LU分解", "插值",
+    ],
+}
+
+
+def _domain_priority_boost(category: str, problem: str) -> float:
+    """Large deterministic boost for domains with report-critical ambiguity."""
+    text = problem or ""
+    terms = DOMAIN_PRIORITY_TERMS.get(category, [])
+    hits = sum(1 for term in terms if term and term in text)
+    if not hits:
+        return 0.0
+    # Keep low-score specialist domains ahead of generic algebra/probability
+    # when the statement contains domain-specific notation but few Chinese keywords.
+    return 100.0 + hits * 5.0
 
 
 class SkillsLoader:
@@ -86,7 +128,7 @@ class SkillsLoader:
             hits = [kw for kw in kws if kw and kw in problem]
             alias_hits = [kw for kw in DOMAIN_ALIASES.get(cat, []) if kw and kw in problem]
             category_hit = 1.0 if cat in problem else 0.0
-            scores[cat] = len(hits) + len(alias_hits) + category_hit
+            scores[cat] = len(hits) + len(alias_hits) + category_hit + _domain_priority_boost(cat, problem)
         return sorted(scores.items(), key=lambda x: (x[1], x[0]), reverse=True)[:top_k]
 
     def get_embedding_index(self):

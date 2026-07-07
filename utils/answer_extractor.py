@@ -20,31 +20,44 @@ class AnswerExtractor:
 
 # 明显"话说一半"的结尾：冒号/逗号/运算符/引导语，后面本应还有内容
 _DANGLING_TAIL_RE = re.compile(r"(?:[：:，,、;；=+\-*/^]|如下|分别为|分别是|包括|即)\s*$")
+_UNUSABLE_ANSWER_RE = re.compile(
+    r"^\s*(?:no\s*solution|无解|无法求解|无法确定|不能确定)\s*$|"
+    r"(?:示例数据|模拟数据|假设数据|替换.*真实数据|未提供.*数据|缺少.*数据)",
+    re.IGNORECASE,
+)
 
 
 def looks_incomplete_answer(answer: str) -> bool:
-    """判断答案是否为明显不完整的碎片（截断/引导语/未闭合括号）。
+    """判断答案是否为明显不完整的碎片（截断/截头/引导语/未闭合括号）。
 
     评委报告主要问题 2/3：'(Matrix([' 与 'Z_18 的所有子群如下：' 这类碎片
-    曾直接污染 final_response。此检测用于 cross_validator 与 formatter 的回退门。
+    曾直接污染 final_response。2026-07-07 报告新增截头残片形态：'1}^n X_i$'、
+    '\\sigma^2$ 且无自相关'、'0.390625$'（来自 LaTeX 内部 '=' 处切断）。
+    此检测用于 cross_validator 与 formatter 的回退门。
     """
     s = (answer or "").strip()
     if not s:
         return True
-    # 括号总开数 > 总闭数 → 截断（开闭跨类型合计，兼容半开区间 [0, 1) 记法）
+    if _UNUSABLE_ANSWER_RE.search(s):
+        return True
+    # 括号开闭不等 → 截断（开>闭）或截头（闭>开，如 '1}^n X_i$'）。
+    # 开闭跨类型合计，兼容半开区间 [0, 1) 记法。
     opens = sum(s.count(ch) for ch in "([{")
     closes = sum(s.count(ch) for ch in ")]}")
-    if opens > closes:
+    if opens != closes:
         return True
     if _DANGLING_TAIL_RE.search(s):
+        return True
+    if looks_like_latex_fragment(s):
         return True
     return False
 
 
 def looks_like_latex_fragment(text: str) -> bool:
-    """判断文本是否为被截头的 LaTeX 残片（如 '2 \\\\ 0, & n \\neq 2 \\end{cases} $$'）。
+    """判断文本是否为被截头/截尾的 LaTeX 残片（如 '2 \\\\ 0, & n \\neq 2 \\end{cases} $$'）。
 
-    特征：\\end{env} 无配对 \\begin{env}；$$ 未配对；对齐符 & 出现在任何环境之外。
+    特征：\\end{env} 无配对 \\begin{env}；$$ 或单 $ 未配对（'0.390625$'）；
+    花括号开闭不等；对齐符 & 出现在任何环境之外。
     """
     s = (text or "").strip()
     if not s:
@@ -57,6 +70,11 @@ def looks_like_latex_fragment(text: str) -> bool:
             return True
     if s.count("$$") % 2 == 1:
         return True
+    # 单 $ 不配对：LaTeX 数学模式被切断（评委报告 '0.390625$'、'…(n - p - 1)}$'）
+    if s.count("$") % 2 == 1:
+        return True
+    if s.count("{") != s.count("}"):
+        return True
     if "&" in s and "\\begin" not in s and "\\&" not in s:
         return True
     return False
@@ -64,7 +82,8 @@ def looks_like_latex_fragment(text: str) -> bool:
 
 _ENUM_MARK_RE = re.compile(r"[（(]\s*[1-9一二三四五]\s*[）)]|[①②③④⑤]|第[一二三四五]问")
 _MULTI_ASK_RE = re.compile(
-    r"(?:求|计算|写出|给出|确定)[^。；;]*?(?:，?\s*并|及|以及|、并)[^。；;]*?(?:求|计算|证明|判断|讨论|写出|给出|确定)"
+    r"(?:求|计算|写出|给出|确定)[^。；;]*?(?:，?\s*并|及|以及|、并)"
+    r"[^。；;]*?(?:求|计算|证明|判断|讨论|写出|给出|确定|描述|说明|分析|比较)"
 )
 
 

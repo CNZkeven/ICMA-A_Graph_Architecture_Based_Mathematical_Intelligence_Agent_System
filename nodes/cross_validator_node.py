@@ -5,7 +5,8 @@ when it succeeded (deterministic > LLM prose, which may echo placeholders or
 compute wrong values). For proof problems or python-failed cases, use reasoning.
 """
 from utils.answer_matcher import AnswerMatcher
-from utils.answer_extractor import looks_incomplete_answer
+from utils.answer_contract import answer_part_count, missing_components
+from utils.answer_extractor import is_multi_part_problem, looks_incomplete_answer
 from utils.cot_stripper import is_placeholder_answer
 from config import CONFIG
 
@@ -20,16 +21,32 @@ def _preferred_answer(state: dict, match_result: dict) -> str:
     Computation + python_success + 答案完整 → Python answer (sympy, deterministic).
     Python 答案为空/碎片（评委报告问题 2：'(Matrix([' 等截断片段曾污染
     final_response）→ 回退 reasoning answer；两者都不完整时取非空者兜底。
+
+    uncertain 时保持推理优先（去锚定），但 2026-07-07 评委报告显示：推理侧漏
+    结论/漏问项/漏分配而 Python 侧完整时（265/271/283/93/113/275），残缺答案
+    仍然胜出。故当推理答案缺契约字段或漏问项、且 Python 答案更完整时改选 Python。
     """
     rr = state.get("reasoning_result") or {}
     po = state.get("python_output") or {}
+    problem = state.get("problem", "")
     ptype = match_result.get("problem_type", "computation")
     python_answer = _clean_answer(po.get("answer", ""))
     reasoning_answer = _clean_answer(rr.get("answer", ""))
     python_ok = bool(po.get("success")) and bool(python_answer)
+    reasoning_ok = bool(reasoning_answer) and not looks_incomplete_answer(reasoning_answer)
+    if match_result.get("status") == "uncertain" and reasoning_ok:
+        if python_ok and not looks_incomplete_answer(python_answer):
+            r_missing = missing_components(problem, reasoning_answer)
+            p_missing = missing_components(problem, python_answer)
+            if len(p_missing) < len(r_missing):
+                return python_answer
+            if is_multi_part_problem(problem) \
+                    and answer_part_count(python_answer) > answer_part_count(reasoning_answer):
+                return python_answer
+        return reasoning_answer
     if ptype == "computation" and python_ok and not looks_incomplete_answer(python_answer):
         return python_answer
-    if reasoning_answer and not looks_incomplete_answer(reasoning_answer):
+    if reasoning_ok:
         return reasoning_answer
     return reasoning_answer or python_answer
 

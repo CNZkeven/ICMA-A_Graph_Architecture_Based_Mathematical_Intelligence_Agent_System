@@ -1,3 +1,8 @@
+from utils.answer_contract import (
+    missing_components,
+    recover_confidence_interval,
+    recover_hypothesis_conclusion,
+)
 from utils.answer_extractor import (
     AnswerExtractor,
     is_multi_part_problem,
@@ -182,6 +187,178 @@ def _proof_completeness_score(text: str) -> int:
     return sum(1 for term in terms if term in (text or ""))
 
 
+_STRUCTURED_PROBLEM_TERMS = (
+    "回归", "最小二乘", "标准误", "置信区间", "假设检验", "检验统计量",
+    "ANOVA", "方差分析表", "拒绝", "不拒绝", "显著", "求和表达式",
+    "复化", "梯形", "Romberg", "中心差分", "数值微分", "条件数",
+    "稳定区间", "临界步长",
+)
+
+_STRUCTURED_FIELD_TERMS = (
+    "\\bar{x}", "\\bar{y}", "xbar", "ybar", "S_{xx}", "Sxx", "S_{xy}", "Sxy",
+    "\\hat{\\beta}", "beta0", "beta1", "回归直线", "SSE", "SSR", "SST",
+    "MSE", "MSR", "df", "自由度", "标准误", "t=", "F=", "检验统计量",
+    "临界值", "拒绝", "不拒绝", "结论", "置信区间", "p-value", "p值",
+    "ANOVA", "T(h)", "T(h/2)", "精确值", "绝对误差", "稳定区间",
+    "h_{\\text{crit}}", "\\kappa", "\\|A\\|", "Frobenius",
+)
+
+
+def _requires_structured_computation_answer(problem: str) -> bool:
+    return any(term in (problem or "") for term in _STRUCTURED_PROBLEM_TERMS)
+
+
+def _structured_answer_score(text: str) -> int:
+    return sum(1 for term in _STRUCTURED_FIELD_TERMS if term in (text or ""))
+
+
+def _prefer_structured_final_section(problem: str, section: str, formatted_answer: str) -> str:
+    if not section or len(section) > 2000 or looks_incomplete_answer(section):
+        return formatted_answer
+    if not _requires_structured_computation_answer(problem):
+        return formatted_answer
+    if _structured_answer_score(section) >= max(2, _structured_answer_score(formatted_answer) + 1):
+        return section
+    return formatted_answer
+
+
+def _clean_extracted_value(value: str) -> str:
+    import re
+    v = (value or "").strip()
+    v = v.replace("$$", " ").replace("$", " ").strip()
+    if "=" in v:
+        v = v.split("=")[-1].strip()
+    v = re.split(r"\\quad|\\text\{|其中|或", v)[0].strip()
+    v = re.split(r"[。；;，,\n]", v)[0].strip()
+    return v.strip(" 。；;，,")
+
+
+def _value_candidate_score(value: str) -> tuple:
+    import re
+    v = value or ""
+    cleaned = _clean_extracted_value(v)
+    concrete = bool(re.search(r"\d", cleaned))
+    symbolic_penalty = any(term in cleaned for term in ("\\sum", "\\frac{1}{n}", "_i", "x_i", "y_i"))
+    compact = len(cleaned) <= 30
+    return (1 if concrete else 0, 1 if compact else 0, 0 if symbolic_penalty else 1, -len(cleaned))
+
+
+def _extract_value_after_label(text: str, label_pattern: str) -> str:
+    import re
+    source = text or ""
+    matches = list(re.finditer(rf"(?:{label_pattern})\s*=\s*([^。；;，,\n]+)", source))
+    if not matches:
+        return ""
+    values = []
+    for match in matches:
+        values.append(_clean_extracted_value(match.group(1)))
+        block_end = len(source)
+        for marker in ("；", ";", "，", ",", "。", "\n\n", "\n**步骤", "\n###", "\n- "):
+            pos = source.find(marker, match.end())
+            if pos != -1:
+                block_end = min(block_end, pos)
+        next_label = re.search(
+            r"(?:\\bar\{x\}|\\bar\{y\}|S_\{xx\}|Sxx|S_\{xy\}|Sxy|"
+            r"\\hat\{\\beta\}_0|\\hat\{\\beta\}_1|\\hat\{y\})\s*=",
+            source[match.end():],
+        )
+        if next_label:
+            block_end = min(block_end, match.end() + next_label.start())
+        block = source[match.start():block_end]
+        if len(block) <= 800:
+            values.append(_clean_extracted_value(block))
+    values = [value for value in values if value]
+    if not values:
+        return ""
+    return max(enumerate(values), key=lambda item: (_value_candidate_score(item[1]), item[0]))[1]
+
+
+def _extract_assignment(text: str, name: str) -> str:
+    import re
+    match = re.search(rf"\b{name}\s*=\s*([^;；,\n]+)", text or "")
+    return _clean_extracted_value(match.group(1)) if match else ""
+
+
+def _build_linear_regression_summary(problem: str, cleaned: str, formatted_answer: str) -> str:
+    if not any(term in (problem or "") for term in ("回归", "最小二乘", "\\hat{\\beta}", "标准误")):
+        return ""
+    source = cleaned or ""
+    detail_pos = source.find("详细步骤")
+    if detail_pos != -1:
+        source = source[detail_pos:]
+        cut_points = [pos for marker in ("答案验证", "结果检验", "最终答案")
+                      if (pos := source.find(marker)) != -1 and pos > 0]
+        if cut_points:
+            source = source[:min(cut_points)]
+
+    xbar = _extract_value_after_label(source, r"\\bar\{x\}")
+    ybar = _extract_value_after_label(source, r"\\bar\{y\}")
+    sxx = _extract_value_after_label(source, r"S_\{xx\}|Sxx")
+    sxy = _extract_value_after_label(source, r"S_\{xy\}|Sxy")
+    beta0 = (_extract_assignment(formatted_answer, "beta0")
+             or _extract_value_after_label(source, r"\\hat\{\\beta\}_0|\\hat\{\\beta_0\}"))
+    beta1 = (_extract_assignment(formatted_answer, "beta1")
+             or _extract_value_after_label(source, r"\\hat\{\\beta\}_1|\\hat\{\\beta_1\}"))
+    line = _extract_value_after_label(source, r"\\hat\{y\}")
+    if not line and beta0 and beta1:
+        line = f"{beta0}+{beta1}x"
+
+    fields = []
+    if xbar:
+        fields.append(f"$\\bar{{x}}={xbar}$")
+    if ybar:
+        fields.append(f"$\\bar{{y}}={ybar}$")
+    if sxx:
+        fields.append(f"$S_{{xx}}={sxx}$")
+    if sxy:
+        fields.append(f"$S_{{xy}}={sxy}$")
+    if beta1:
+        fields.append(f"$\\hat{{\\beta}}_1={beta1}$")
+    if beta0:
+        fields.append(f"$\\hat{{\\beta}}_0={beta0}$")
+    if line:
+        fields.append(f"回归直线 $\\hat{{y}}={line}$")
+
+    return "；".join(fields) if len(fields) >= 4 else ""
+
+
+def _build_structured_summary(problem: str, cleaned: str, formatted_answer: str) -> str:
+    summary = _build_linear_regression_summary(problem, cleaned, formatted_answer)
+    if summary:
+        return summary
+    return ""
+
+
+def _numbers_in(text: str) -> set:
+    import re
+    return set(re.findall(r"\d+(?:\.\d+)?", text or ""))
+
+
+def _summary_subsumes_answer(summary: str, answer: str) -> bool:
+    """结构化摘要只允许"增量替换"：必须保留原答案的全部数值。
+
+    评委报告 线性回归__003：摘要（均值/平方和/回归线）曾把含标准误、t 统计量、
+    临界值的更完整答案顶掉。数值包含检查阻止这种降级替换。
+    """
+    return _numbers_in(answer) <= _numbers_in(summary)
+
+
+def _append_recovered_components(fa: str, cleaned: str, missing: list) -> str:
+    """契约字段缺失时，从完整解题说明中回捞（当前支持：检验结论、置信区间）。"""
+    additions = []
+    if "hypothesis_conclusion" in missing:
+        sentence = recover_hypothesis_conclusion(cleaned)
+        if sentence:
+            additions.append("结论：" + sentence.strip("；;，, "))
+    if "ci_two_sided" in missing:
+        interval = recover_confidence_interval(cleaned)
+        if interval:
+            additions.append(f"置信区间：${interval}$")
+    if not additions:
+        return fa
+    return fa + "；" + "；".join(additions)
+
+
 def _prefer_complete_proof_answer(cleaned: str, formatted_answer: str) -> str:
     section_answer = _extract_final_section(cleaned)
     if not section_answer:
@@ -228,13 +405,33 @@ def post_process_final_response(raw: str, validated_answer: str, problem_type: s
     if _is_numeric_key_literal(validated_answer):
         fa = _format_residue_numeric_dict(validated_answer, cleaned) or _prefer_math_final_section(cleaned, fa)
     section = _remove_python_literal_lines(_extract_final_section(cleaned))
-    if looks_incomplete_answer(fa) or fa == "无法确定":
-        # 答案是碎片（评委报告 idx=83/352："(Matrix(["、"…如下："）→ 回退 coordinator 的最终答案章节
-        if section and not looks_incomplete_answer(section):
+    section_ok = bool(section) and len(section) <= 1600 and not looks_incomplete_answer(section)
+    structured_summary = _build_structured_summary(problem, cleaned, fa)
+    if structured_summary and _structured_answer_score(structured_summary) > _structured_answer_score(fa) \
+            and _summary_subsumes_answer(structured_summary, fa):
+        fa = structured_summary
+    elif looks_incomplete_answer(fa) or fa == "无法确定":
+        # 答案是碎片（评委报告 idx=83/352："(Matrix(["、"…如下："；20260707 报告
+        # idx=260/254/255/272："1}^n X_i$" 等截头残片）→ 回退 coordinator 的最终答案章节
+        if section_ok:
             fa = section
+        elif fa == "无法确定" or looks_incomplete_answer(fa):
+            candidate = _extract_fallback_answer(cleaned)
+            if candidate and not looks_incomplete_answer(candidate):
+                fa = candidate
     elif problem and is_multi_part_problem(problem):
-        # 多问项题（评委报告 idx=172：漏答密度函数）：单一 validated 答案覆盖不了所有问项，
-        # coordinator 章节按 prompt 要求逐项列出 → 更完整时优先采用
-        if section and len(section) > len(fa) and len(section) <= 2000:
+        # 多问项题（评委报告 idx=172：漏答密度函数；20260707 idx=113：漏覆盖空间）：
+        # 单一 validated 答案覆盖不了所有问项，coordinator 章节逐项列出 → 更完整时优先采用
+        if section_ok and len(section) > len(fa):
             fa = section
+    else:
+        fa = _prefer_structured_final_section(problem, section, fa)
+    # 字段契约兜底（评委报告 §5：检验缺结论、区间缺端点、运输缺分配、枚举缺对象）：
+    # fa 缺题面要求的组成部分时，先换更完整的 coordinator 最终答案节，再从正文回捞。
+    missing = missing_components(problem, fa)
+    if missing and section_ok and len(missing_components(problem, section)) < len(missing):
+        fa = section
+        missing = missing_components(problem, fa)
+    if missing:
+        fa = _append_recovered_components(fa, cleaned, missing)
     return f"最终答案：{fa}"

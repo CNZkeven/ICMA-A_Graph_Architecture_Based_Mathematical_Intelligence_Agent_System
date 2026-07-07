@@ -1,5 +1,11 @@
 # 微分几何技能手册
 
+## 高频错误与口径约定（评委反馈 2026-07-07）
+
+- **法曲率符号约定（必须遵守）**：法曲率 $\kappa_n=\mathrm{II}(w,w)/\mathrm{I}(w,w)$ 的符号取决于单位法向量的选取。本题库对圆柱、球面等经典曲面采用**外法向**约定。圆柱面 $\mathbf{r}(u,v)=(\cos v,\sin v,u)$ 取外法向 $\mathbf{n}=(\cos v,\sin v,0)$，此时 $L=\mathbf{r}_{uu}\cdot\mathbf{n}=0$、$N=\mathbf{r}_{vv}\cdot\mathbf{n}=-1$：沿 $u$ 方向（直母线）$\kappa_n=0$，**沿 $v$ 方向（圆周）$\kappa_n=-1$**（曲面向外法向的反方向弯曲，取负）。
+- 若按 $\mathbf{n}=\mathbf{r}_u\times\mathbf{r}_v/|\mathbf{r}_u\times\mathbf{r}_v|$ 算出的是内法向（指向轴线/球心），必须翻转法向（等价于结果变号）后再报答案。
+- 高斯曲率 $K=\kappa_1\kappa_2$ 与法向选取无关；平均曲率 $H$ 和单个方向的 $\kappa_n$ 随法向翻转而变号——答题时先写明所取法向再给数值。
+
 ## 目录
 
 - [1 曲线弧长](#1-曲线弧长)

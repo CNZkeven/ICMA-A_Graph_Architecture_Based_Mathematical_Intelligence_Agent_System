@@ -5,6 +5,11 @@ description: Use when verifying abstract algebra problems with sympy — group t
 
 # 抽象代数解题与验证技能手册
 
+## 高频错误与口径约定（评委反馈 2026-07-07）
+
+- **有限 Abel 群分类必须枚举全部对象**：$n=p_1^{a_1}\cdots p_k^{a_k}$ 阶互不同构的 Abel 群共 $\prod_i P(a_i)$ 个（$P(a)$ 为整数 $a$ 的分拆数），最终答案必须先给总数、再逐一列出每个群，只列一个按未完成计。
+- 例（评委题）：$36=2^2\times 3^2$，$P(2)\times P(2)=2\times2=4$ 个。初等因子形式：$\mathbb{Z}_4\oplus\mathbb{Z}_9$、$\mathbb{Z}_4\oplus\mathbb{Z}_3\oplus\mathbb{Z}_3$、$\mathbb{Z}_2\oplus\mathbb{Z}_2\oplus\mathbb{Z}_9$、$\mathbb{Z}_2\oplus\mathbb{Z}_2\oplus\mathbb{Z}_3\oplus\mathbb{Z}_3$；对应不变因子形式：$\mathbb{Z}_{36}$、$\mathbb{Z}_{3}\times\mathbb{Z}_{12}$、$\mathbb{Z}_{2}\times\mathbb{Z}_{18}$、$\mathbb{Z}_{6}\times\mathbb{Z}_{6}$。题面指定用哪种分解就用哪种，两种均可时给初等因子形式。
+
 ## 概述
 
 本技能手册覆盖本科抽象代数课程的核心知识体系，包括群论基础（子群、商群、同态与同构定理）、环论基础（零因子、理想、极大理想）、对称群与群作用（共轭类、类方程）、Sylow定理、多项式环与域扩张、有限域、以及有限Abel群的结构定理。全手册以20道精选习题为骨架，系统梳理每个知识模块的核心概念、常用定理、解题步骤和常见陷阱，并配套sympy验证方法，适用于抽象代数课程的学习、复习与自动解题验证。

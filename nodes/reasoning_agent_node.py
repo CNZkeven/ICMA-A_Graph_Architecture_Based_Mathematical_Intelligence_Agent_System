@@ -3,7 +3,7 @@ from utils.deps import get_deps
 from utils.llm_retry import chat_with_retry
 from utils.prompt_templates import REASONING_PROMPT
 from utils.token_budget import estimate_tokens
-from utils.answer_extractor import looks_like_latex_fragment
+from utils.answer_extractor import looks_incomplete_answer, looks_like_latex_fragment
 from utils.cot_stripper import is_placeholder_answer, strip_cot_prefix
 from config import CONFIG
 
@@ -29,47 +29,123 @@ def _parse_reasoning_output(response):
 
 
 def _reject_bad_answer(answer):
-    """Placeholder 或被截头的 LaTeX 残片（评委报告 idx=112）一律不作为答案。"""
+    """Placeholder、被截头的 LaTeX 残片或明显不完整的碎片一律不作为答案。"""
     answer = (answer or "").strip()
-    if is_placeholder_answer(answer) or looks_like_latex_fragment(answer):
+    if is_placeholder_answer(answer) or looks_like_latex_fragment(answer) \
+            or looks_incomplete_answer(answer):
         return ""
     return answer
+
+
+_ENUM_ITEM_RE = re.compile(r"^\s*(?:\d+\s*[.、)]|[-*•①②③④⑤])")
+# 行是否携带答案信息：等式 / 数学式 / 数字 / 结论词。纯引导语（"…如下所示："）丢弃。
+_PAYLOAD_LINE_RE = re.compile(r"[=$]|\d|拒绝|接受|显著|结论|因此|所以|故|建议|选择|综上|存在|唯一|收敛|成立")
+
+
+def _strip_bullet(line):
+    return line.lstrip("-*•①②③④⑤ ").strip()
+
+
+def _join_parts(parts):
+    """用全角分号连接各行；行尾自带分号时去重，避免出现 '；；'。"""
+    cleaned = [p.rstrip("；; ").strip() for p in parts if p and p.strip("；; ")]
+    return "；".join(cleaned)
+
+
+def _rhs_of_top_level_eq(line):
+    """行内最后一个"顶层" '=' 的右侧内容；没有顶层 '=' 时返回 ''。
+
+    顶层 = 不在任何括号/花括号内，且不在 $...$ 数学模式内。这避免了从
+    \\sum_{i=1}^n 的下标 'i=1' 或整条 LaTeX 公式中间切断（评委报告：
+    '1}^n X_i$'、'\\sigma^2$ 且无自相关' 均由此产生）。
+    """
+    depth = 0
+    in_math = False
+    pos = -1
+    for i, ch in enumerate(line):
+        if ch == "$":
+            in_math = not in_math
+        elif ch in "{([":
+            depth += 1
+        elif ch in "})]":
+            depth = max(0, depth - 1)
+        elif ch == "=" and depth == 0 and not in_math:
+            pos = i
+    return line[pos + 1:].strip() if pos >= 0 else ""
 
 
 def _distill_answer(text):
     """Distill a concise answer from the '## 最终答案' section text.
 
-    Multi-part enumeration (≥2 '名称=值' lines) → keep all parts joined. Short
-    section → last non-empty line. Long prose → explicit '答案是X' pattern, then
-    trailing '= value', then first line. Every candidate is rejected when it is a
-    placeholder or a decapitated LaTeX fragment (e.g. a '= tail' grabbed from
-    inside a \\begin{{cases}} environment), falling through to the next strategy.
+    策略顺序（每个候选都要通过 placeholder/残片检查，失败则落到下一策略）：
+    1. 枚举节（≥2 个编号/列表项）→ 全部条目整体保留（评委报告：抽象代数__013
+       曾只剩 1 个群）。
+    2. 多行短节 → 保留所有信息行（含无 '=' 的结论行——统计推断__009~012 的
+       "拒绝/不拒绝 H0" 结论行曾被只留等式行的旧逻辑丢弃）。
+    3. 短节（≤80 字符）→ 最后一行。
+    4. 显式 '答案是X' 模式。
+    5. 行尾顶层 '=' 右值（LaTeX 感知，绝不切进公式内部）；右值残缺时保留整行。
+    6. 首个信息行。
     """
     text = (text or "").strip()
     if is_placeholder_answer(text):
         return ""
     lines = [l.strip() for l in text.splitlines() if l.strip()]
-    # 多问项答案节：形如每行"f_Z(z) = ..."、"P(Z>1) = 1/2"的枚举必须整体保留（idx=172 曾只取一行）
-    eq_lines = [l.lstrip("-*• ").strip() for l in lines if "=" in l]
-    if len(lines) <= 6 and len(eq_lines) >= 2 and len(text) <= 600 \
-            and all(len(l) <= 160 for l in eq_lines):
-        joined = "；".join(eq_lines)
+
+    # 1. 枚举节：所有条目整体保留（保留带信息的引导行，如"共 4 种："）
+    enum_items = [l for l in lines if _ENUM_ITEM_RE.match(l)]
+    if len(enum_items) >= 2 and len(text) <= 1600:
+        kept = [_strip_bullet(l) for l in lines
+                if _ENUM_ITEM_RE.match(l) or _PAYLOAD_LINE_RE.search(l)]
+        joined = _join_parts(kept)
         if not looks_like_latex_fragment(joined) and not is_placeholder_answer(joined):
             return joined
+
+    # 2. 多行短节：保留所有信息行（等式行 + 结论行），过滤纯引导语
+    eq_lines = [_strip_bullet(l) for l in lines if "=" in l]
+    if 2 <= len(lines) <= 8 and len(text) <= 900 and eq_lines \
+            and all(len(l) <= 200 for l in lines):
+        kept = [_strip_bullet(l) for l in lines if _PAYLOAD_LINE_RE.search(l)]
+        joined = _join_parts(kept)
+        if kept and not looks_like_latex_fragment(joined) and not is_placeholder_answer(joined):
+            return joined
+    if len(eq_lines) >= 3:
+        conclusion_extra = [_strip_bullet(l) for l in lines
+                            if "=" not in l and re.search(r"拒绝|接受|显著|结论|建议|选择|综上", l)]
+        joined = _join_parts(eq_lines + conclusion_extra)
+        if len(joined) <= 1600 and not looks_like_latex_fragment(joined) and not is_placeholder_answer(joined):
+            return joined
+
+    # 3. 短节 → 最后一行
     if len(text) <= 80:
         return _reject_bad_answer(lines[-1] if lines else text)
+
+    # 4. 显式"答案是X"
     for pat in (r"答案[是为：:]\s*(.+?)(?:\n|$)", r"answer\s*[:is]+\s*(.+?)(?:\n|$)"):
         m = re.search(pat, text, re.IGNORECASE)
         if m:
             answer = _reject_bad_answer(m.group(1))
             if answer:
                 return answer
-    m = re.search(r"=\s*([^=\n]+?)\s*$", text, re.MULTILINE)
-    if m:
-        answer = _reject_bad_answer(m.group(1))
+
+    # 5. 行尾顶层 '=' 右值；右值残缺时退回整行（不得切进 LaTeX 公式内部）
+    eq_line = next((l for l in reversed(lines) if "=" in l), "")
+    if eq_line:
+        answer = _reject_bad_answer(_rhs_of_top_level_eq(eq_line))
         if answer:
             return answer
-    return _reject_bad_answer(lines[0] if lines else text)
+        answer = _reject_bad_answer(_strip_bullet(eq_line))
+        if answer:
+            return answer
+
+    # 6. 首个信息行，最后兜底整节
+    for cand in ([l for l in lines if _PAYLOAD_LINE_RE.search(l)][:1]
+                 + ([lines[0]] if lines else [])
+                 + ([text] if len(text) <= 600 else [])):
+        answer = _reject_bad_answer(cand)
+        if answer:
+            return answer
+    return ""
 
 
 def _is_complete(r):
@@ -84,9 +160,10 @@ def reasoning_agent_node(state, config):
     max_attempts = 1 if budget and budget.is_tight() else CONFIG["max_retries_per_node"]
     problem, category = state["problem"], state["category"]
     skill_doc = sl.get_skill_document(category)
-    base_prompt = REASONING_PROMPT.format(category=category, skill_document=skill_doc[:2000], problem=problem)
+    base_prompt = REASONING_PROMPT.format(category=category, skill_document=skill_doc[:3000], problem=problem)
     hint = state.get("branch_hint")
-    prompt = f"{hint}\n\n问题：{problem}" if hint else base_prompt
+    # 复核重试也保留 skill 文档与字段契约（旧实现只发 hint+题面，丢失了学科口径）
+    prompt = f"{base_prompt}\n\n[复核提示] {hint}" if hint else base_prompt
     trace = []
     attempts = 0
     parsed = {"analysis": "", "steps": [], "answer": "", "validation_points": []}
@@ -107,5 +184,6 @@ def reasoning_agent_node(state, config):
             return {"reasoning_result": parsed, "reasoning_trace": trace, "reasoning_attempts": attempts}
         # retry: keep base context (skill doc + category) + explicit format reminder
         prompt = (base_prompt + "\n\n注意：上一次输出缺少必需章节（必须含 '## 问题分析'、'## 详细解题步骤'、"
-                  "'## 最终答案'，且'## 最终答案'后只给简洁答案值）。请重新严格按格式输出。")
+                  "'## 最终答案'）。'## 最终答案' 下必须按题面要求完整列出各字段/各问项的结果"
+                  "（含检验结论、区间上下限、全部枚举对象等），不得只给单个数值。请重新严格按格式输出。")
     return {"reasoning_result": parsed, "reasoning_trace": trace, "reasoning_attempts": attempts}
