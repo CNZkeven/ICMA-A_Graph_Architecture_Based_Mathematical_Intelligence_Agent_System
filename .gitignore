@@ -1,0 +1,19 @@
+__pycache__/
+*.py[cod]
+*.tmp
+.DS_Store
+.env
+.env.*
+logs/
+outputs/
+sample_outputs/
+*.log
+
+# Local evaluation/test artifacts intentionally excluded from the published system repo
+test/
+tests/
+competition/
+.codegraph/
+sample_data/
+*_output*/
+*_outputs*/

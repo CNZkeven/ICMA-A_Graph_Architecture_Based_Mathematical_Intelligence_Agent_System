@@ -1,0 +1,16 @@
+CONFIG = {
+    "model": "intern-s2-preview",
+    "max_retries_per_node": 2, "llm_max_retries": 3, "backoff_factor": 2.0,
+    "node_timeouts": {"input":5,"classifier":30,"solving":130,"reasoning_agent":120,
+                      "python_agent":60,"python_mcp_execute":30,"cross_validator":10,
+                      "reconciliation":60,"coordinator":90},
+    "classifier_top_k":5, "classifier_confidence_threshold":0.7,
+    "computation_tolerance":1e-6, "proof_confidence_threshold":0.7,
+    "temperatures":{"classifier":0.1,"reasoning":0.2,"python":0.2,
+                    "reconciliation":0.1,"coordinator":0.3},
+    "max_tokens":{"classifier":32768,"reasoning":32768,"python":32768,
+                  "reconciliation":32768,"coordinator":32768},
+    "reconciliation_max_rounds":2,
+    "token_budget_max":256000, "token_budget_warn_ratio":0.9,
+    "log_level":"INFO", "log_dir":"logs",
+}
