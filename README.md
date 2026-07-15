@@ -1,5 +1,7 @@
 # ICMA-A Graph Architecture Based Mathematical Intelligence Agent System
 
+## 本项目采用 AGPLv3.0 许可证，任何使用需遵守开源义务
+
 本项目是一个面向数学题自动求解的多智能体系统。系统以 LangGraph 为编排框架，将数学题求解拆成 **领域分类、LLM 推理、Python/SymPy 验证、答案交叉校验、冲突调解、最终协调输出** 六个阶段，目标是在挑战杯评测接口中稳定返回结构清晰、答案明确、可追踪的 `final_response`。
 
 项目入口保持竞赛约定：评测侧可以直接导入 `user_agent.py` 中的 `ReasoningAgent`，调用 `solve(problem, metadata)` 获得结果。本地调试时也可以运行 `main.py`，批量读取 JSONL 输入并为每道题写出独立 JSON 结果。
