@@ -8,6 +8,13 @@ class Deps:
     skills_loader: Any = None
     mcp_client: Any = None
     token_budget: Any = None
+    #: Per-problem wall-clock budget (utils.time_budget.TimeBudget). Optional so
+    #: unit tests can omit it; every consumer treats None as "unbounded".
+    time_budget: Any = None
+    db_client: Any = None
+    # Optional demo event sink. Production callers can omit it; the web demo
+    # receives node lifecycle events without changing solver behavior.
+    event_sink: Any = None
     logger: logging.Logger = field(default_factory=lambda: logging.getLogger("math_agent"))
 
 def get_deps(config: dict) -> "Deps":

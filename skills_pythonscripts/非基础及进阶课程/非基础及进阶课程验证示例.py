@@ -1,159 +1,157 @@
-# -*- coding: utf-8 -*-
-import sys, io
-sys.stdout = io.TextIOWrapper(sys.stdout.buffer, encoding='utf-8')
+r'''
+# 非基础及进阶课程：验证提示词与知识点索引
+运行环境：conda activate Competition
+文件性质：这是竞赛数学的说明型提示资料，包含可摘取的 Python/SymPy 片段，不是可直接运行的完整搜索程序或答案库。
+
+## 使用规则
+- 只用于欧氏/凸/射影竞赛几何，以及没有更专门课程目录的构造、反例、数论函数方程和连续策略题。
+- 构造题同时验证可行性与最优性：给出构造、下界或上界，以及所有非退化、凸性、相切和顺序条件。
+- 题目若明确是矩阵、群环域、PDE、数值离散、曲率/测地线，应转对应专科手册。
+
+## 知识点 1：竞赛几何
+- 面对三角形、圆、角平分线、外心/内心/垂心、根轴或极点极线，优先寻找共圆、相似、幂、反演和射影不变量。
+- 坐标化前先说明坐标选择不丢失一般性；解析结论要回译为几何条件。
+- 凸多边形和面积题应检查顶点顺序、对角线交点和面积是否为有向面积。
+
+## 知识点 2：组合构造与极值
+- 覆盖、路径、棋盘和铺砖题先给状态空间和不变量，再分别给可行构造与不可行下界。
+- 计数时处理对称性、重复计数和边界状态；不能把小规模试验当作一般证明。
+
+## 知识点 3：数论与函数方程
+- 整除函数或多项式函数方程从代入特殊值、因式分解、同余和增长性开始；每次除法都保留零值情形。
+- 用 Vieta、判别式或不变量时明确参数范围和实根/整数根条件。
+
+## 知识点 4：策略与博弈
+- 连续策略题先定义状态、行动集合、胜负条件与阈值；分别构造双方策略来证明临界值两侧结论。
+- 离散 P/N 态或纯组合博弈转离散数学；此处只处理综合竞赛型策略构造。
+
+## Python 代码片段：坐标几何与面积不变量
+```python
 import sympy as sp
-import math
-from fractions import Fraction
 
-results = []
-def check(name, ok, desc=""):
-    results.append((name, "PASS" if ok else "FAIL", desc))
-    if not ok: print(f"  *** FAIL: {desc} ***")
+def oriented_area(point_a, point_b, point_c):
+    matrix = sp.Matrix([
+        [point_a[0], point_a[1], 1],
+        [point_b[0], point_b[1], 1],
+        [point_c[0], point_c[1], 1],
+    ])
+    return sp.simplify(matrix.det() / 2)
 
-print("=" * 60)
-print("非基础及进阶课程 20 题验证")
-print("=" * 60)
+# 点坐标必须由题面构造；比较面积前核对顶点顺序和凸性。
+```
 
-# ===== idx 0: 实变·Q∩[0,1]测度=0 =====
-print("\n[0] Lebesgue测度: m(Q∩[0,1])=0")
-check("0·可数集测度0", True, "可数集ε覆盖→测度零")
+## Python 代码片段：整数构造的整除与回代
+```python
+import sympy as sp
 
-# ===== idx 1: 实变·DCT lim∫nx/(1+n²x²)=0 =====
-print("\n[1] DCT: lim∫nx/(1+n²x²)dx=0")
-x_s, n_s = sp.symbols('x_s n_s', positive=True)
-integral_1 = sp.integrate(n_s*x_s/(1+n_s**2*x_s**2), (x_s, 0, 1))
-limit_1 = sp.limit(integral_1, n_s, sp.oo)
-check("1·极限=0", limit_1 == 0, f"={limit_1}")
+# candidate 和 predicate 由推导得到；仅枚举题面给出的有限范围。
+def validate_candidate(candidate, predicate):
+    return bool(predicate(candidate))
 
-# ===== idx 2: 实变·L²⊂L¹ 证明 =====
-print("\n[2] L²⊂L¹: Cauchy-Schwarz验证")
-# ∫|f|·1 ≤ (∫|f|²)^(1/2)·(∫1²)^(1/2)
-check("2·CS不等式", True, "Holder p=q=2验证通过")
+factor_check = sp.factor(candidate_expression - target_expression)
+divisibility_check = sp.rem(numerator, denominator, domain=sp.ZZ) == 0
+```
 
-# ===== idx 3: 泛函·ℓ²范数 π/√6 =====
-print("\n[3] ℓ²范数: Σ1/n²=π²/6")
-nn = sp.Symbol('nn', integer=True, positive=True)
-s3 = sp.summation(1/nn**2, (nn, 1, sp.oo))
-check("3·π²/6", sp.simplify(s3 - sp.pi**2/6) == 0, f"sum={s3}")
-check("3·范数", abs(math.sqrt(float(sp.pi**2/6)) - math.pi/math.sqrt(6)) < 1e-10)
+## Python 代码片段：有限状态策略的反例搜索
+```python
+from itertools import product
 
-# ===== idx 4: 泛函·平行四边形法则不满足 =====
-print("\n[4] 不满足平行四边形法则")
-# ‖f+g‖²+‖f-g‖²=2, 2(‖f‖²+‖g‖²)=4
-check("4·LHS=2,RHS=4,2≠4", True, "C[0,1]上max范数非内积范数")
+# 只在题目状态空间确实有限且边界已知时使用；不能代替一般策略证明。
+counterexample = next(
+    (state for state in product(*state_components) if not invariant(state)),
+    None,
+)
+if counterexample is not None:
+    raise ValueError(f"候选策略在状态 {counterexample} 失效")
+```
 
-# ===== idx 5: 泛函·收敛列有界 =====
-print("\n[5] 收敛列有界(数值验证)")
-check("5·|1/n|≤1", all(abs(1/k) <= 1 for k in range(1,100)))
+## 输出契约
+- 结论必须给出构造或策略、双侧界/反例、以及题目要求的全部参数或分类。
+- 不得把示意图、数值试验或未证明的对称性当作最终证明。
+- 代码负责核对构造与反例，文字部分仍须给出一般性上/下界或策略证明。
 
-# ===== idx 6: 代数·Z₁₂中7x≡3→x=9 =====
-print("\n[6] 模方程: 7x≡3(mod12)")
-check("6·7·9≡3", (7*9) % 12 == 3)
-check("6·gcd(7,12)=1", math.gcd(7,12) == 1)
+## 模块级验证代码（与非基础及进阶课程 skill 的 10 个主模块对应）
 
-# ===== idx 7: 代数·S₄置换(123)(24)=(1243) =====
-print("\n[7] 置换分解")
-p7 = sp.combinatorics.Permutation(2,4) * sp.combinatorics.Permutation(1,2,3)
-# 验证: sigma把1→2, 2→4, 4→3, 3→1, 即单轮换(1,2,4,3), 阶为4
-check("7·阶=4", p7.order() == 4)
-# 验证映射
-check("7·1→2", p7(1) == 2)
-check("7·2→4", p7(2) == 4)
-check("7·4→3", p7(4) == 3)
-check("7·3→1", p7(3) == 1)
+## Python 代码片段：模块1 竞赛数论与整除函数
+```python
+import sympy as sp
 
-# ===== idx 8: 代数·二阶元⇒Abel =====
-print("\n[8] 二阶元群(验证Klein四元群)")
-check("8·V₄交换", True, "V₄={e,a,b,ab}满足a²=b²=e且交换")
+gcd_check = sp.gcd(integer_a, integer_b)
+divisibility_residual = sp.rem(candidate_expression, divisor_expression, domain=sp.ZZ)
+```
 
-# ===== idx 9: 拓扑·d∞距离=1/2 =====
-print("\n[9] d∞距离: min max(|x|,|1-x|)=1/2")
-x9 = sp.symbols('x9', real=True)
-# 在x=1/2处取得最小值
-check("9·距离=1/2", abs(max(0.5, 0.5) - 0.5) < 1e-10)
+## Python 代码片段：模块2 竞赛组合与未知障碍路径
+```python
+from itertools import product
 
-# ===== idx 10: 拓扑·E={1/n}∪{0}紧致 =====
-print("\n[10] 紧致性: 有界且闭")
-check("10·E⊂[0,1]", True)
-check("10·0∈E是聚点", True)
+states = list(product(range(rows), range(columns)))
+reachable = {state for state in states if state not in blocked_states}
+path_count = sum(path_counter(state) for state in reachable)
+```
 
-# ===== idx 11: 拓扑·Lebesgue数引理 =====
-print("\n[11] Lebesgue数引理(数值验证)")
-check("11·[0,1]紧致", True, "开覆盖存在δ>0")
+## Python 代码片段：模块3 竞赛函数方程的结构审计
+```python
+import sympy as sp
 
-# ===== idx 12: 复变·∫dx/(x²+1)²=π/2 =====
-print("\n[12] 留数定理: ∫_{-∞}^{∞} dx/(x²+1)²")
-x12 = sp.symbols('x12', real=True)
-val12 = sp.integrate(1/(x12**2+1)**2, (x12, -sp.oo, sp.oo))
-check("12·=π/2", sp.simplify(val12 - sp.pi/2) == 0, f"={val12}")
+x, y = sp.symbols("x y")
+substitution_gap = sp.factor(function_equation.subs({x: special_x, y: special_y}))
+candidate_gap = sp.factor(candidate_function(x) - target_function(x))
+```
 
-# ===== idx 13: 复变·∫dθ/(2+cosθ)=2π/√3 =====
-print("\n[13] 围道积分: ∫₀²π dθ/(2+cosθ)")
-th13 = sp.symbols('th13', real=True)
-val13 = sp.integrate(1/(2+sp.cos(th13)), (th13, 0, 2*sp.pi))
-check("13·=2π/√3", sp.simplify(val13 - 2*sp.pi/sp.sqrt(3)) == 0, f"={val13}")
+## Python 代码片段：模块4 连续策略博弈
+```python
+import sympy as sp
 
-# ===== idx 14: 复变·|f|常数⇒f常数 =====
-print("\n[14] |f|常数⇒f常数(逻辑验证)")
-check("14·最大模原理", True, "或C-R方程导数→u_x=v_x=0")
+threshold_gap = sp.simplify(strategy_value - critical_value)
+lower_bound_gap = sp.simplify(opponent_payoff - lower_bound)
+upper_bound_gap = sp.simplify(upper_bound - player_payoff)
+```
 
-# ===== idx 15: 微分几何·κ(0)=2 =====
-print("\n[15] 曲线曲率: r=(t,t²,t³) at t=0")
-t15 = sp.symbols('t15')
-r15 = sp.Matrix([t15, t15**2, t15**3])
-rp15 = sp.diff(r15, t15).subs(t15, 0)
-rpp15 = sp.diff(rp15.subs(t15, t15), t15).subs(t15, 0)  # 直接算二阶导
-r15p = sp.Matrix([1, 2*t15, 3*t15**2])
-r15pp = sp.Matrix([0, 2, 6*t15])
-r15p0 = r15p.subs(t15, 0)
-r15pp0 = r15pp.subs(t15, 0)
-k15 = sp.sqrt((r15p0.cross(r15pp0)).dot(r15p0.cross(r15pp0))) / (sp.sqrt(r15p0.dot(r15p0)))**3
-check("15·κ=2", sp.simplify(k15 - 2) == 0, f"κ={k15}")
+## Python 代码片段：模块5 验证知识提示与回归索引
+```python
+required_fields = (problem_statement, candidate_answer, claimed_bound)
+missing_fields = [name for name, value in zip(field_names, required_fields) if value is None]
+```
 
-# ===== idx 16: 微分几何·K=4,H=2 =====
-print("\n[16] 曲面曲率: z=x²+y² at (0,0)")
-u16, v16 = sp.symbols('u16 v16')
-ru = sp.Matrix([1, 0, 2*u16])
-rv = sp.Matrix([0, 1, 2*v16])
-# 原点
-ru0 = sp.Matrix([1, 0, 0])
-rv0 = sp.Matrix([0, 1, 0])
-E16 = ru0.dot(ru0)
-F16 = ru0.dot(rv0)
-G16 = rv0.dot(rv0)
-n16 = sp.Matrix([0, 0, 1])
-L16 = 2; M16 = 0; N16 = 2
-K16 = (L16*N16 - M16**2) / (E16*G16 - F16**2)
-H16 = (E16*N16 + G16*L16 - 2*F16*M16) / (2*(E16*G16 - F16**2))
-check("16·K=4", K16 == 4, f"K={K16}")
-check("16·H=2", H16 == 2, f"H={H16}")
+## Python 代码片段：模块6 复分析兼容提示
+```python
+import sympy as sp
 
-# ===== idx 17: 微分几何·τ≡0⇔平面曲线 =====
-print("\n[17] 挠率: 平面曲线τ≡0")
-check("17·平面曲线τ=0", True, "B'=-τN=0→B常向量→曲线在平面内")
+z = sp.symbols("z")
+compatibility_residue = sp.residue(complex_expression, z, singular_point)
+```
 
-# ===== idx 18: 数值·Newton 3/2, 17/12 =====
-print("\n[18] Newton迭代: x²-2=0")
-x0 = Fraction(1,1)
-x1 = (x0 + Fraction(2,1)/x0) / 2
-x2 = (x1 + Fraction(2,1)/x1) / 2
-check("18·x₁=3/2", x1 == Fraction(3,2), f"x₁={x1}")
-check("18·x₂=17/12", x2 == Fraction(17,12), f"x₂={x2}")
+## Python 代码片段：模块7 测度积分兼容提示
+```python
+import sympy as sp
 
-# ===== idx 19: 数值·3点Gauss-Legendre ≈2.3504 =====
-print("\n[19] Gauss-Legendre积分")
-nodes = [-math.sqrt(3/5), 0, math.sqrt(3/5)]
-weights = [5/9, 8/9, 5/9]
-approx = sum(w*math.exp(z) for w,z in zip(weights, nodes))
-exact = math.exp(1) - math.exp(-1)
-err = abs(approx - exact)
-check("19·近似≈精确", err < 1e-4, f"≈{approx:.6f}, exact={exact:.6f}, err={err:.2e}")
+absolute_integral = sp.integrate(sp.Abs(integrand), (x, lower, upper))
+integrability_check = sp.limit(absolute_integral, upper, sp.oo)
+```
 
-# ===== 汇总 =====
-print("\n" + "=" * 60)
-print("验证汇总")
-print("=" * 60)
-for name, status, desc in results:
-    print(f"  [{name}] {'PASS' if status=='PASS' else 'FAIL'} {desc}")
-p = sum(1 for _, s, _ in results if s == "PASS")
-print(f"\n通过: {p}/{len(results)}")
+## Python 代码片段：模块8 综合几何构造
+```python
+import sympy as sp
+
+area = sp.Matrix([[point[0], point[1], 1] for point in triangle]).det() / 2
+distance_constraints = [sp.simplify(distance(a, b) - required_length)
+                        for a, b, required_length in constraints]
+```
+
+## Python 代码片段：模块9 综合代数技巧
+```python
+import sympy as sp
+
+x = sp.symbols("x")
+polynomial_residual = sp.factor(polynomial.subs(x, candidate_root))
+discriminant = sp.discriminant(polynomial, x)
+```
+
+## Python 代码片段：模块10 平面几何核心定理
+```python
+import sympy as sp
+
+oriented_area = sp.Matrix([[p[0], p[1], 1] for p in points]).det() / 2
+circle_power_gap = sp.factor(distance(point, center) ** 2 - radius ** 2)
+```
+'''

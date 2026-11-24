@@ -5,9 +5,20 @@ description: Use when verifying stochastic processes problems — Markov chains,
 
 # 随机过程解题与验证技能手册
 
+## 领域边界与路由约定
+
+- 适用范围：Markov 链、Poisson 过程、Brownian 运动、生灭/更新过程、鞅、停时和覆盖时间。
+- 不接管：静态分布与概率计算转概率论；时间序列观测数据、趋势和季节调整转统计推断。
+- 验证契约：明确离散步数、时间编号和初始状态是否已经计入覆盖集合；严格按题面定义推导计时偏移，并检查停时/状态空间条件。
+
+## 时间序列兼容口径
+
+经典时间序列分解包含长期趋势 $T$、季节变动 $S$、循环变动 $C$ 和不规则项 $I$；“随机变动”通常是对不规则项的同义描述，不应重复计数。弱平稳要求均值、方差恒定且协方差只依赖滞后；白噪声还要求不同期不相关。季节调整常用移动平均比率法和 X-11/X-13。
+- 比较两个总量指标时间数列时，先看分子、分母的经济含义和单位：比值可能表示相对指标，也可能表示平均水平或强度指标。不能仅凭“两个总量”或绝对化词语预先决定分类，最终按题面教材定义给出判断及反例/依据。
+
 ## 概述
 
-本技能手册覆盖本科随机过程课程的核心知识体系，包括离散时间Markov链（转移矩阵、平稳分布、周期性、极限分布、吸收概率）、Poisson过程（基本概率、非齐次、独立叠加、等待时间分布）、复合Poisson过程（期望与方差）、生灭过程与M/M/1排队论、Brownian运动（协方差、鞅性质、首达时、反射原理）、随机游走、更新过程（初等更新定理）、指数分布与次序统计量、以及鞅与停时（Doob有界停时定理）等经典内容。全手册以20道精选习题为骨架，系统梳理每个知识模块的核心概念、常用定理、解题步骤和常见陷阱，并配套sympy验证方法，适用于随机过程课程的学习、复习与自动解题验证。
+本技能手册覆盖本科随机过程课程的核心知识体系，包括离散时间Markov链（转移矩阵、平稳分布、周期性、极限分布、吸收概率）、Poisson过程（基本概率、非齐次、独立叠加、等待时间分布）、复合Poisson过程（期望与方差）、生灭过程与M/M/1排队论、Brownian运动（协方差、鞅性质、首达时、反射原理）、随机游走、更新过程（初等更新定理）、指数分布与次序统计量、以及鞅与停时（Doob有界停时定理）等经典内容。本手册以概念模块和可复核的推导步骤为骨架；示例参数只用于说明记号，不能替代当前题面的独立计算。
 
 ---
 
@@ -52,13 +63,6 @@ description: Use when verifying stochastic processes problems — Markov chains,
 3. 若不可约且非周期，极限分布存在且等于平稳分布。
 4. 若有周期 $d > 1$，则 $P^n$ 不收敛，极限分布不存在。
 
-#### 对应习题
-
-- **idx 0**: 二状态Markov链求平稳分布 — 解 $\pi P = \pi$，$\pi = (3/7, 4/7)$
-- **idx 9**: 三状态矩阵周期判定与平稳分布 — 确定循环置换矩阵周期 $d=3$
-- **idx 13**: 极限分布存在性与计算 — 验证不可约非周期，求极限分布 $(1/3,1/3,1/3)$
-- **idx 15**: 证明Chapman-Kolmogorov方程 — 全概率公式 + Markov性 + 时齐性
-
 ---
 
 ### 模块2：Markov链吸收概率
@@ -85,10 +89,6 @@ description: Use when verifying stochastic processes problems — Markov chains,
 2. 对每个瞬态 $i$，列出吸收概率方程：$a_i = \sum_{j \in A} p_{ij} \cdot (\text{边界值}) + \sum_{k \in T} p_{ik} a_k$。
 3. 设定边界条件（目标吸收态概率为 $1$，其余吸收态为 $0$）。
 4. 解线性方程组得到各 $a_i$。
-
-#### 对应习题
-
-- **idx 3**: 四状态Markov链吸收概率 — 建立方程组求解，从状态2被状态3吸收的概率为 $2/5$
 
 ---
 
@@ -137,13 +137,6 @@ description: Use when verifying stochastic processes problems — Markov chains,
 1. 利用 $W_n = T_1 + \cdots + T_n$，其中 $T_i \sim \text{Exp}(\lambda)$ i.i.d.。
 2. 使用特征函数或矩母函数法：$n$ 个独立 $\text{Exp}(\lambda)$ 之和的特征函数为 $(\frac{\lambda}{\lambda - it})^n$，识别为 $\text{Gamma}(n, \lambda)$。
 
-#### 对应习题
-
-- **idx 2**: Poisson过程基本概率 — $P(N(1)=3) = \frac{4}{3}e^{-2}$，$P(N(2) \geq 1) = 1-e^{-4}$
-- **idx 10**: 非齐次Poisson过程 — $\lambda(t) = 2t$，$E[N(3)] = 9$，$P(N(2)-N(1)=0) = e^{-3}$
-- **idx 11**: 独立Poisson过程叠加 — $N_1+N_2 \sim \text{Poisson}(5)$
-- **idx 17**: 证明Poisson过程等待时间分布 — $W_n \sim \text{Gamma}(n,\lambda)$
-
 ---
 
 ### 模块4：复合Poisson过程
@@ -171,10 +164,6 @@ description: Use when verifying stochastic processes problems — Markov chains,
 3. 代入公式 $E[S(t)] = \lambda t \cdot E[X]$。
 4. 代入公式 $\operatorname{Var}(S(t)) = \lambda t \cdot E[X^2]$。
 5. 注意：$\operatorname{Cov}(S(s), S(t)) = \lambda \min(s,t) \cdot E[X^2]$（若需协方差）。
-
-#### 对应习题
-
-- **idx 6**: 复合Poisson期望与方差 — $E[S(4)]=400$，$\operatorname{Var}(S(4))=8320$
 
 ---
 
@@ -213,11 +202,6 @@ description: Use when verifying stochastic processes problems — Markov chains,
 1. 判定 $\rho = \lambda / \mu < 1$ 为平稳条件。
 2. 由细致平衡 $\lambda \pi_n = \mu \pi_{n+1}$ 得 $\pi_{n} = \rho^n \pi_0$。
 3. 归一化：$\pi_0 \sum_{n=0}^{\infty} \rho^n = \pi_0 / (1-\rho) = 1$，故 $\pi_0 = 1 - \rho$。
-
-#### 对应习题
-
-- **idx 4**: 三状态生灭过程平稳分布 — 细致平衡递推，$\pi = (8/23, 12/23, 3/23)$
-- **idx 16**: 证明M/M/1排队平稳分布 $\pi_n = (1-\rho)\rho^n$ — 细致平衡 + 归一化
 
 ---
 
@@ -268,13 +252,6 @@ description: Use when verifying stochastic processes problems — Markov chains,
 2. 取条件期望：$E[B(t) \mid \mathcal{F}_s] = E[B(t)-B(s) \mid \mathcal{F}_s] + B(s)$。
 3. 由独立增量性质，$B(t)-B(s)$ 独立于 $\mathcal{F}_s$ 且期望为 $0$，故 $E[B(t) \mid \mathcal{F}_s] = B(s)$。
 
-#### 对应习题
-
-- **idx 7**: Brownian运动协方差与方差 — $\operatorname{Cov}(B(1)+B(2), B(3)) = 3$，$\operatorname{Var}(B(2)-B(1)) = 1$
-- **idx 12**: Brownian运动双边界首达时 — $P(T_1 < T_{-1}) = 1/2$，$E[T] = 1$
-- **idx 14**: 证明Brownian运动是鞅 — 独立增量 + 零期望增量
-- **idx 19**: 证明反射原理 — 反射路径同分布 + 概率分解
-
 ---
 
 ### 模块7：随机游走
@@ -300,10 +277,6 @@ description: Use when verifying stochastic processes problems — Markov chains,
 1. 由所需 $S_n = m$ 反解向上步数 $k = (n+m)/2$。
 2. 验证 $k$ 为整数且在 $[0, n]$ 范围内。
 3. 计算二项概率 $\binom{n}{k} \cdot (1/2)^n$。
-
-#### 对应习题
-
-- **idx 1**: 简单对称随机游走位置概率 — $P(S_6=0) = 5/16$，$P(S_6=2) = 15/64$
 
 ---
 
@@ -335,10 +308,6 @@ description: Use when verifying stochastic processes problems — Markov chains,
 2. 长期平均更新率 $= 1/\mu$。
 3. 用初等更新定理近似给定时间 $t$ 内的期望更新次数：$E[N(t)] \approx t/\mu$。
 
-#### 对应习题
-
-- **idx 8**: 灯泡更换更新过程 — 平均更换率 $=1$ 次/年（寿命 $U(0,2)$，均值为 $1$ 年）
-
 ---
 
 ### 模块9：指数分布与次序统计量
@@ -364,10 +333,6 @@ description: Use when verifying stochastic processes problems — Markov chains,
 1. 确认各随机变量独立且均服从指数分布。
 2. 利用最小值分布公式 $T = \min(X_i) \sim \text{Exp}(\sum \lambda_i)$。
 3. 计算期望 $E[T] = 1/(\sum \lambda_i)$ 和生存函数 $P(T > t) = e^{-(\sum \lambda_i) t}$。
-
-#### 对应习题
-
-- **idx 5**: 独立指数分布最小值 — $E[T] = 1/3$ 年，$P(T > 1) = e^{-3}$
 
 ---
 
@@ -403,469 +368,83 @@ description: Use when verifying stochastic processes problems — Markov chains,
 3. 利用独立增量性质：$B(t)-B(s) \perp \mathcal{F}_s$，且 $E[B(t)-B(s)] = 0$。
 4. 得 $E[B(t) \mid \mathcal{F}_s] = B(s)$。
 
-#### 对应习题
-
-- **idx 14**: 证明Brownian运动是鞅 — 独立增量 + 条件期望
-- **idx 18**: 证明Doob有界停时定理 — 鞅差表示 + 有界停时
-- **idx 19**: 证明Brownian运动反射原理 — 反射不变性 + 概率分解
-
 ---
 
-## 通用解题方法论
+## 模块速查：通用解题方法论
+
+### 统一工作流
+1. 先从题面写出状态空间、初始条件、时间或步数的编号方式，以及目标事件的精确定义。
+2. 选择与模型匹配的定理或递推；每个边界条件都在方程中显式标注。
+3. 对概率、期望和方差分别做量纲、范围和极限检查；必要时用独立的符号或小规模计算复核。
+4. 输出时区分推导结论、数值近似和仍需题面确认的假设，不把示例参数当作结论。
+
+### Markov 链与吸收问题
+- 有限链先检查行和、可达性、周期和闭类，再解 `pi P = pi` 并归一化。
+- 吸收链按瞬态/吸收态分块，写 `a = r + Q a`；回代后逐个核对边界值与概率范围。
+- 极限分布只有在不可约、正常返且非周期等条件满足时才可直接等同于平稳分布。
+
+### Poisson、更新与排队
+- 齐次过程用区间长度乘强度，非齐次过程先积分得到均值函数 `Lambda(t)`。
+- 复合过程用全概率、条件期望和全方差公式，分别记录单次报酬的一阶、二阶矩。
+- 更新率、排队稳定性和 Little 定律都要先确认有限均值及稳定条件，再代入参数。
+- 独立过程叠加时重新检查独立性与时间区间，不能从相似记号直接套结论。
+
+### Brownian 运动、随机游走与鞅
+- Brownian 运动的协方差由 `min(s,t)` 给出；首达问题先声明单边或双边边界，再用反射原理或鞅停止法。
+- 随机游走位置概率先检查奇偶和可达范围，再用二项系数或递推求值。
+- 证明鞅与停时结论时，逐项检查滤子可测性、可积性和停时有界性；反射映射要写出终点对应关系。
+
+### 时间起点和覆盖时间核验
+- 覆盖问题先说明初始状态是否已经计入覆盖集合，以及 `T` 表示转移次数还是带标签的访问时刻。
+- 若两种编号约定会产生偏移，分别写出参数化表达式并由题面选择；不要把固定的常数偏移预先写入答案。
+- 对完全图等特殊结构，可将等待阶段写成几何分布并求和；换成一般图时重新验证独立性。
+
+### 证据与复核清单
+- Python 或符号计算只作为可审计的独立证据：记录输入、断言、边界和失败反例，不能以空输出或单纯 `print` 代替证明。
+- 候选答案必须经过回代、范围、维度和至少一种替代方法检查；发现矛盾时保留矛盾记录并重新建模。
+- 资料检索只提供定义和方法线索，任何具体数值、选项或解集都从当前题面重新推导。
+
+## 模块速查：解法直达·完全图上随机游动的遍访时间期望
+- 检索词：完全图 随机游动 首次遍访 所有顶点 时间 期望
+- 命中条件：简单随机游动
+**推理过程**：
+1. 分阶段计数：已访问 $k$ 个顶点时，下一步遇到新顶点的概率为 $\dfrac{N-k}{N-1}$——当前顶点必在已访集内，下一跳在其余 $N-1$ 个顶点中均匀选择。
+2. 每个阶段的等待时间 $\tau_k$ 服从几何分布，期望为 $\dfrac{N-1}{N-k}$。
+3. 遍访时间 $T=\sum_{k=1}^{N-1}\tau_k$，由期望的线性性直接求和。
+4. 换指标 $j=N-k$ 整理求和式，即得 $\mathrm{E}T=(N-1)\sum_{j=1}^{N-1}\frac1j$ 的组合形式。
+5. 两端 sanity check：$\tau_1=1$、$\tau_{N-1}=N-1$ 与直觉吻合。
+**自检**：$N=2$ 应给 $1\times1$；$N=3$ 手推一遍（$2\times(1+\frac12)$）核对公式方向；注意分母是 $N-1$（不能原地下一步）而非 $N$——用"普通赠券收集"作对照排除该错法。
+
+## 模块速查：解法直达·整数上随机游走的不变测度
+- 检索词：随机游走 不变测度 平稳分布 差分方程 特征方程
+- 命中条件：不变测度
+**推理过程**：
+1. 不变测度 $\mu$ 满足 $\mu(x)=p\,\mu(x+1)+(1-p)\,\mu(x-1)$（左跳概率 $p$、右跳 $1-p$，把“从邻近点跳入 $x$”加权相加）。
+2. 这是常系数线性递推，试指数解 $\mu(x)=r^x$：$p\,r^{x+1}-r^x+(1-p)r^{x-1}=0$，两边乘 $r^{1-x}$ 得特征方程 $pr^2-r+(1-p)=0$，因式分解 $(r-1)\big(pr-(1-p)\big)=0$，两根 $r=1$ 与 $r=(1-p)/p$。
+3. 两根互异（$p\ne1/2$）时通解 $\mu(x)=A+B\left(\frac{1-p}{p}\right)^{x}$；$p=1/2$ 时重根，通解为线性函数 $A+Bx$。
+4. 非负性约束：$p\ne1/2$ 时由 $x\to\pm\infty$ 两端知 $A\ge0,B\ge0$；$p=1/2$ 时 $A+Bx$ 对一切 $x\in\mathbb{Z}$ 非负迫使 $B=0$（只剩常测度，也即公式在 $(1-p)/p=1$ 处的退化情形）。
+5. 该测度在 $\mathbb{Z}$ 上总质量无穷，不能归一成概率分布 —— 所以该链没有不变概率测度；第 3、4 步给出的非负两参数族就是它的全部不变测度。
+**自检**：分别代 $p=1/2$（退化常数）、$p\to0^+$（系数 $1/p$ 型爆炸）两端情形检查公式退化方向；非负性两条边界（$x\to+\infty$、$x\to-\infty$）都要走一遍。
+
+## 模块速查：解法直达·布朗运动的历史最大值是否具有马氏性
+- 检索词：布朗运动 最大值 马氏性 反射原理 首达时
+- 命中条件：马氏过程 M_{t}:=
+**推理过程**：
+1. 马氏性要求：给定 $M_t$ 的条件下，$M_{t+h}$ 的条件分布不再依赖 $t$ 之前的全部历史。找反例只需说明“同一 $M_t$ 值、不同历史”给出不同的条件分布。
+2. 记 $G_t$ 为 $[0,t]$ 上取得最大值的时刻（末次达到时刻），$X_t=M_t-B_t$ 为当前值距历史最大值的“回落幅度”。
+3. 用反射原理量化未来的刷新机会：给定 $M_t=m$、$G_t=r$，在 $(t,t+h]$ 内再创新高的概率为 $1-\frac{t-r}{t-r+h}$ 型表达式 —— 它显含 $r=G_t$（距离上次刷新已经过了多久）。
+4. 而 $G_t$ 不由 $M_t$ 单独决定：在 $M_t$ 相同的事件里，最大值可能很早达到（$G_t$ 小）也可能刚刚达到（$G_t$ 接近 $t$），两种情形的 $t-r$ 不同，第 3 步的条件概率不同。
+5. 条件分布不能表示成只含 $M_t$ 的函数 ⇒ $(M_t)_{t\ge0}$ 不是马氏过程。
+**自检**：结论句明确写“不是马氏过程”，并把原因归到“未来刷新概率依赖最大值到达时刻”这一条；可对照 $|B_t|$（反射布朗运动）是马氏过程，体会差别在历史信息的利用方式。
+
+## 模块速查：解法直达·分段缩放布朗运动最大值的分布
+- 检索词：布朗运动 时间变换 反射原理 最大值 分布函数
+- 命中条件：X_{t}=B_{t}
+**推理过程**：
+1. 先识别 $X$ 的结构：$[0,\frac12]$ 上跑标准布朗运动，之后以两倍速度跑布朗运动，且 $t=1/2$ 处连续（两段在 $B_{1/2}$ 衔接）。
+2. 它是标准布朗运动的确定性时间变换：取 $\tau(t)=t\ (0\le t\le\frac12)$、$\tau(t)=4t-\frac32\ (\frac12\le t\le1)$（即 $\tau=1/2+4(t-1/2)$），则 $X_t=W_{\tau(t)}$。验证协方差：$s,t$ 同为后段时 $\mathrm{Cov}(X_s,X_t)=\frac12+4(s-\frac12)=\tau(s)$；一前一后时 $\mathrm{Cov}=s=\tau(s)$，与布朗运动时间变换的协方差一致。
+3. $\tau([0,1])=[0,\frac52]$ 是单调到上的区间，故 $\max_{[0,1]}X_s\overset{d}{=}\max_{[0,5/2]}W_u$。
+4. 反射原理求分布：$\mathbb{P}\big(\max_{0\le u\le T}W_u\le a\big)=2\Phi\big(\frac{a}{\sqrt T}\big)-1\ (a\ge0)$，取 $T=\frac52$ 得 $\frac{a}{\sqrt{5/2}}=\frac{\sqrt2a}{\sqrt5}$。
+5. 于是 $F_M(a)=0\ (a<0)$，$F_M(a)=2\Phi\!\left(\frac{\sqrt2a}{\sqrt5}\right)-1\ (a\ge0)$，即所求最大值的分布函数。
+**自检**：核对两处代数：$\frac{1}{\sqrt{5/2}}$ 化简为 $\frac{\sqrt2}{\sqrt5}$；$a<0$ 时分布函数取 $0$（最大值非负）。
 
-### 1. 题型识别
-
-拿到题目后首先判断：
-
-| 题型特征 | 对应模块 |
-|---------|---------|
-| "转移概率矩阵" / "平稳分布" / "$\pi P = \pi$" | 模块1：离散时间Markov链基础 |
-| "$p_{ij}^{(n)}$" / "C-K方程" / "Chapman-Kolmogorov" | 模块1：C-K方程 |
-| "周期" / "极限分布" / "$P^n$ 是否收敛" | 模块1：周期性与极限 |
-| "吸收态" / "被吸收的概率" / "吸收Markov链" | 模块2：Markov链吸收概率 |
-| "Poisson过程" / "$N(t)$" / "$e^{-\lambda t}$" | 模块3：Poisson过程 |
-| "非齐次Poisson" / "$\lambda(t)$" / "强度函数" | 模块3：非齐次Poisson |
-| "$N_1+N_2$" / "叠加" / "独立Poisson过程之和" | 模块3：Poisson叠加 |
-| "等待时间" / "$W_n$" / "Erlang" / "Gamma分布" | 模块3：等待时间分布 |
-| "复合Poisson" / "$S(t)$" / "总销售额" / "复合" | 模块4：复合Poisson过程 |
-| "生灭过程" / "出生率死亡率" / "细致平衡" | 模块5：生灭过程 |
-| "M/M/1" / "排队" / "$\rho$" / "交通强度" | 模块5：M/M/1排队论 |
-| "Brownian运动" / "$B(t)$" / "Wiener过程" | 模块6：Brownian运动 |
-| "协方差" / "$\min(s,t)$" / "增量独立" | 模块6：Brownian协方差 |
-| "首达时" / "$T_a$" / "hitting time" / "反射原理" | 模块6：首达时与反射原理 |
-| "鞅" / "$E[M_T]$" / "martingale" | 模块6 + 模块10：鞅 |
-| "随机游走" / "$S_n$" / "步数" / "二项分布" | 模块7：随机游走 |
-| "更新过程" / "更新率" / "初等更新定理" | 模块8：更新过程 |
-| "指数分布" / "$\min$" / "次序统计量" / "无记忆性" | 模块9：指数分布 |
-| "Doob" / "停时" / "有界停时" / "可选停止" | 模块10：鞅与停时 |
-
-### 2. 方法选择
-
-| 问题类型 | 首选方法 | 备选方法 |
-|---------|---------|---------|
-| 求平稳分布 | 解 $\pi P = \pi$ 方程组 | 细致平衡（生灭过程） |
-| 求吸收概率 | 建立吸收方程组 + 线性求解 | 基本矩阵 $N = (I-Q)^{-1}$ |
-| 求Poisson概率 | 直接代入PMF公式 | N/A |
-| 求非齐次Poisson | 先求 $\Lambda(t)$，再转化为标准Poisson | N/A |
-| 求复合Poisson期望/方差 | Wald公式：$E[S]=E[N]E[X]$ | 条件期望 |
-| 求Brownian协方差 | $\operatorname{Cov}(B(s),B(t)) = \min(s,t)$ | 增量独立性展开 |
-| 求Brownian首达时 | 反射原理公式 / 鞅停时法 | 密度函数积分 |
-| 求随机游走概率 | 转化为二项分布 | 递推/生成函数 |
-| 求更新率 | $1/\mu$（初等更新定理） | 更新方程 |
-| 求独立指数最小值 | 最小值分布 $T \sim \text{Exp}(\sum \lambda_i)$ | 生存函数相乘 |
-| 判定周期 | 求状态 $i$ 回路的步数集合的gcd | 自环判定（若 $p_{ii} > 0$ 则 $d=1$） |
-| 判定极限分布存在 | 不可约 + 非周期 + 有限状态 | 遍历性定理 |
-| 证明鞅性质 | 直接条件期望展开 | 鞅变换/函数鞅 |
-| 证明反射原理 | 反射路径同分布 + 概率分解 | Markov性强Markov性 |
-
-### 3. 结果验证
-
-- **平稳分布验证**：$\pi P = \pi$ 且 $\sum \pi_i = 1$。将解代回方程验证。
-- **Poisson概率验证**：$\sum_{k=0}^{\infty} P(N(t)=k) = 1$（总概率为1）。
-- **协方差验证**：正定性检查——对任意 $t_1, \ldots, t_n$，协方差矩阵应半正定。
-- **吸收概率验证**：从吸收态出发的边界条件必须满足；所有瞬态出发的概率值应在 $[0,1]$ 内。
-- **生灭过程平稳分布验证**：验证细致平衡方程 $\pi_i \lambda_i = \pi_{i+1} \mu_{i+1}$ 成立。
-- **首达时概率验证**：$\lim_{t \to \infty} P(T_a \leq t) = 1$（迟早会到达）。
-- **复合Poisson方差验证**：方差必须非负；$E[X^2] \geq (E[X])^2$ 自然满足。
-- **sympy 独立验证**：对计算题结果用 sympy 独立验算（矩阵运算、符号积分、概率计算）。
-
----
-
-## sympy验证技巧
-
-### 转移矩阵与平稳分布
-
-```python
-from sympy import Matrix, symbols, solve, Rational
-
-# 例：idx 0 - 二状态Markov链平稳分布
-P = Matrix([
-    [Rational(1, 3), Rational(2, 3)],
-    [Rational(1, 2), Rational(1, 2)]
-])
-
-pi1, pi2 = symbols('pi1 pi2')
-eqs = [
-    pi1 * P[0, 0] + pi2 * P[1, 0] - pi1,  # pi1 = pi1*p11 + pi2*p21
-    pi1 * P[0, 1] + pi2 * P[1, 1] - pi2,  # pi2 = pi1*p12 + pi2*p22
-    pi1 + pi2 - 1                          # 归一化
-]
-sol = solve(eqs, (pi1, pi2))
-# 得到 pi1=3/7, pi2=4/7
-
-# 例：idx 9 - 周期矩阵的平稳分布
-P3 = Matrix([
-    [0, 1, 0],
-    [0, 0, 1],
-    [1, 0, 0]
-])
-# 验证 P^3 = I（周期为3）
-P3_pow3 = P3**3  # 应为单位矩阵
-
-# 求平稳分布
-pi = symbols('pi0:3')
-eqs3 = [sum(pi[j] * P3[j, i] for j in range(3)) - pi[i] for i in range(3)]
-eqs3.append(sum(pi) - 1)
-sol3 = solve(eqs3, pi)
-```
-
-### 吸收概率方程组
-
-```python
-from sympy import Matrix, symbols, solve, Rational
-
-# 例：idx 3 - 吸收Markov链
-# 状态：1(absorbing,非目标),2(transient),3(absorbing,目标),4(transient)
-P_absorb = Matrix([
-    [1,     0,     0,     0],          # 状态1
-    [Rational(1,3), 0, Rational(1,3), Rational(1,3)],  # 状态2
-    [0,     0,     1,     0],          # 状态3
-    [Rational(1,4), Rational(1,4), 0, Rational(1,2)]   # 状态4
-])
-
-a2, a4 = symbols('a2 a4')
-# a1 = 0, a3 = 1
-eqs = [
-    a2 - (Rational(1,3)*0 + Rational(1,3)*1 + Rational(1,3)*a4),
-    a4 - (Rational(1,4)*0 + Rational(1,4)*a2 + Rational(1,2)*a4)
-]
-sol_absorb = solve(eqs, (a2, a4))
-# a2 = 2/5, a4 = 1/5
-```
-
-### Poisson过程概率
-
-```python
-from sympy import exp, factorial, symbols, integrate
-
-lam, t, k = symbols('lam t k', positive=True, integer=True)
-
-# 例：idx 2 - Poisson PMF
-lam_val = 2
-t_val = 1
-k_val = 3
-p = exp(-lam_val * t_val) * (lam_val * t_val)**k_val / factorial(k_val)
-# = 4*exp(-2)/3
-
-# 例：idx 10 - 非齐次Poisson过程
-lam_t = 2 * t  # lambda(t) = 2t
-Lambda_3 = integrate(lam_t, (t, 0, 3))  # ∫_0^3 2t dt = 9
-# E[N(3)] = 9
-
-Lambda_interval = integrate(lam_t, (t, 1, 2))  # ∫_1^2 2t dt = 3
-P_no_fault = exp(-Lambda_interval)  # e^{-3}
-
-# 例：idx 11 - Poisson过程叠加
-# N1~PP(2), N2~PP(3) -> N1+N2~PP(5)
-P_zero = exp(-5)  # P(N1(1)+N2(1)=0) = e^{-5}
-```
-
-### 复合Poisson过程
-
-```python
-from sympy import symbols
-
-# 例：idx 6
-lam = 5  # 参数
-t_val = 4
-E_X = 20  # 单次期望
-Var_X = 16  # 单次方差
-E_X2 = Var_X + E_X**2  # 416
-
-E_N = lam * t_val  # 20
-E_S = E_N * E_X  # 400
-Var_S = E_N * E_X2  # 8320
-```
-
-### Brownian运动协方差
-
-```python
-# 例：idx 7
-# Cov(B(1)+B(2), B(3)) = Cov(B(1),B(3)) + Cov(B(2),B(3))
-# = min(1,3) + min(2,3) = 1 + 2 = 3
-
-# Var(B(2)-B(1)) = Var(B(2)) + Var(B(1)) - 2Cov(B(1),B(2))
-# = 2 + 1 - 2*min(1,2) = 3 - 2 = 1
-# 或直接：B(2)-B(1) ~ N(0, 1)，方差为1
-
-def cov_B(s, t):
-    """Brownian运动协方差"""
-    return min(s, t)
-
-result_cov = cov_B(1, 3) + cov_B(2, 3)  # 1 + 2 = 3
-result_var = 2 + 1 - 2 * cov_B(1, 2)  # 3 - 2 = 1
-```
-
-### 指数分布与次序统计量
-
-```python
-from sympy import exp, symbols
-
-# 例：idx 5
-lam_list = [1, 1, 1]  # 三台机器均Exp(1)
-lam_min = sum(lam_list)  # 3
-# T = min(X1,X2,X3) ~ Exp(3)
-E_T = 1 / lam_min  # 1/3
-P_T_gt_1 = exp(-lam_min * 1)  # e^{-3}
-```
-
----
-
-## 习题索引
-
-| idx | 题型 | 难度 | 主题 | 关键公式/定理 | 核心方法 | 验证方法 |
-|-----|------|------|------|-------------|---------|---------|
-| 0 | 计算 | 简单 | 离散Markov链平稳分布 | $\pi P = \pi$，$\sum \pi_i = 1$ | 解线性方程组 | sympy `solve` 方程组 |
-| 1 | 计算 | 简单 | 简单随机游走 | $P(S_n=m) = \binom{n}{(n+m)/2} 2^{-n}$ | 二项分布公式 | sympy `binomial` 计算 |
-| 2 | 计算 | 简单 | Poisson过程概率 | $P(N(t)=k) = e^{-\lambda t}\frac{(\lambda t)^k}{k!}$ | 直接代入PMF公式 | sympy `exp` + `factorial` |
-| 3 | 计算 | 中等 | Markov链吸收概率 | $a_i = \sum_{j\in A} p_{ij} + \sum_{k\in T} p_{ik} a_k$ | 建立并解线性方程组 | sympy `solve` |
-| 4 | 计算 | 中等 | 生灭过程平稳分布 | $\pi_i\lambda_i = \pi_{i+1}\mu_{i+1}$（细致平衡） | 细致平衡递推 + 归一化 | 手动递推验证 |
-| 5 | 计算 | 中等 | 指数分布与次序统计量 | $\min(\text{Exp}(\lambda_i)) \sim \text{Exp}(\sum \lambda_i)$ | 最小值分布公式 | sympy `exp` 计算 |  
-| 6 | 计算 | 中等 | 复合Poisson过程 | $E[S(t)] = \lambda t E[X]$，$\operatorname{Var}(S(t)) = \lambda t E[X^2]$ | Wald期望/方差公式 | 手动代入验证 |
-| 7 | 计算 | 中等 | Brownian运动协方差 | $\operatorname{Cov}(B(s),B(t)) = \min(s,t)$ | 协方差函数展开 | 独立增量 + min公式 |
-| 8 | 计算 | 中等 | 更新过程 | $\lim_{t\to\infty} E[N(t)]/t = 1/\mu$ | 计算平均间隔 $\mu$ + 初等更新定理 | 期望公式计算 |
-| 9 | 计算 | 中等 | Markov链周期性判定 | $d(i) = \gcd\{n \geq 1 : p_{ii}^{(n)} > 0\}$ | 解平稳分布 + 周期判定 | sympy 矩阵幂 |
-| 10 | 计算 | 中等 | 非齐次Poisson过程 | $\Lambda(t) = \int_0^t \lambda(s)ds$，$N(t)\sim\text{Poisson}(\Lambda(t))$ | 积分求 $\Lambda(t)$ + Poisson概率 | sympy `integrate` |
-| 11 | 计算 | 中等 | 独立Poisson过程叠加 | $N_1+N_2 \sim \text{PP}(\lambda_1+\lambda_2)$ | 参数相加 + Poisson概率 | sympy `exp` |
-| 12 | 计算 | 困难 | Brownian运动首达时 | $P(T_a < T_{-b}) = \frac{b}{a+b}$，$E[\min(T_a, T_{-b})] = ab$ | 对称Brownian首达时公式 | 鞅停时法 / 公式直接代入 |
-| 13 | 计算 | 困难 | Markov链极限分布 | 不可约非周期 $\Rightarrow$ 极限分布 $=$ 平稳分布 | 验证不可约+非周期 + 解$\pi P = \pi$ | sympy 矩阵特征值 |
-| 14 | 证明 | 简单 | Brownian运动鞅性质 | $E[B(t)\mid\mathcal{F}_s] = B(s)$（独立增量） | 增量分解 + 条件期望 | 逻辑验证 |
-| 15 | 证明 | 中等 | Chapman-Kolmogorov方程 | $p_{ij}^{(m+n)} = \sum_k p_{ik}^{(m)} p_{kj}^{(n)}$ | 全概率公式 + Markov性 + 时齐性 | 逻辑推导 |
-| 16 | 证明 | 中等 | M/M/1排队平稳分布 | $\pi_n = (1-\rho)\rho^n$，$\rho = \lambda/\mu < 1$ | 细致平衡递推 + 几何级数归一化 | 逻辑推导 |
-| 17 | 证明 | 中等 | Poisson过程等待时间 | $W_n \sim \text{Gamma}(n,\lambda)$，$f(t) = \frac{\lambda^n t^{n-1}e^{-\lambda t}}{(n-1)!}$ | $W_n = \sum T_i$ + 特征函数法 | 特征函数唯一性 |
-| 18 | 证明 | 困难 | Doob有界停时定理 | $E[M_T] = E[M_0]$（$T$有界停时） | 鞅差表示 + 有界停时 | 逻辑推导 |
-| 19 | 证明 | 困难 | Brownian运动反射原理 | $P(T_a \leq t) = 2P(B(t) \geq a) = 2(1-\Phi(a/\sqrt{t}))$ | 反射路径同分布 + 概率分解 | 对称性论证 |
-
----
-
-## 常见错误与陷阱
-
-### 离散时间Markov链
-1. **平稳分布方程中漏写归一化条件**：解 $\pi P = \pi$ 时，$n$ 个方程中只有 $n-1$ 个独立，必须添加 $\sum \pi_i = 1$ 才能得到唯一解。
-2. **将非平稳分布误认为平稳分布**：必须验证 $\pi = \pi P$ 是否在所有分量上成立。仅通过一两项的比值不能断定。
-3. **混淆周期性和非周期性**：状态有自环（$p_{ii} > 0$）仅保证该状态非周期，但若链不可约，则所有状态同周期。周期 $d > 1$ 意味着极限分布不存在（$P^n$ 不收敛）。
-4. **极限分布与平稳分布的概念混淆**：平稳分布总是存在于有限不可约链中；极限分布只有在遍历链（不可约非周期）中才存在，并等于平稳分布。
-5. **C-K方程中指标顺序错误**：$p_{ij}^{(m+n)} = \sum_k p_{ik}^{(m)} p_{kj}^{(n)}$，注意第一个因子的第一个下标是 $i$、第二个因子的第二个下标是 $j$。不要写成 $\sum_k p_{ki}^{(m)} p_{jk}^{(n)}$。
-
-### 吸收概率
-6. **边界条件设定错误**：吸收态的边界值必须正确——目标吸收态概率为 $1$，非目标吸收态概率为 $0$。混淆边界会导致整个方程组的结果错误。
-7. **方程组中遗漏归一化条件**：吸收概率方程组本身是封闭的，不需要额外添加归一化。从瞬态出发，进入所有吸收态的概率之和为 $1$，可作为验证。
-8. **转移矩阵行方向混淆**：$P$ 的行表示"从哪个状态出发"，列表示"到达哪个状态"。列方程时注意使用正确方向。
-
-### Poisson过程
-9. **混淆速率和均值**：Poisson过程的参数 $\lambda$ 是速率（rate），而 $N(t)$ 的分布参数是 $\lambda t$。直接代入 $\lambda$ 而不是 $\lambda t$ 是常见错误。
-10. **非齐次Poisson中直接使用 $\lambda(t)$ 作为分布参数**：必须先用 $\Lambda(t) = \int_0^t \lambda(s)\,ds$ 转化。$N(t) \sim \text{Poisson}(\Lambda(t))$，而非 $\text{Poisson}(\lambda(t) \cdot t)$。
-11. **Poisson过程叠加中混淆独立性和参数**：两个独立Poisson过程之和确实仍是Poisson过程，但要求真正的独立性。未验证独立性就叠加是错误的。
-12. **混淆Poisson过程的 $N(t)$ 与 $W_n$**：$P(N(t) \geq n) = P(W_n \leq t)$ 是做变换的关键关系，但注意不等号方向。
-
-### 复合Poisson过程
-13. **方差公式中遗忘 $E[X^2]$ 而非 $\operatorname{Var}(X)$**：$\operatorname{Var}(S(t)) = \lambda t \cdot E[X^2]$，其中 $E[X^2] = \operatorname{Var}(X) + (E[X])^2$。直接代入 $\operatorname{Var}(X)$ 会显著低估。
-14. **混淆 $S(t)$ 与 $N(t)$ 的期望**：复合Poisson的期望是 $E[S(t)] = E[N(t)] \cdot E[X] = \lambda t \cdot E[X]$。只计算了$N(t)$的期望而忘记乘以$E[X]$。
-
-### Brownian运动
-15. **协方差公式 $\min(s,t)$ 使用错误**：$\operatorname{Cov}(B(s), B(t)) = \min(s, t)$，不是 $\max(s, t)$ 也不是 $s \cdot t$。
-16. **忘记增量独立性仅对不相交区间成立**：$B(3) - B(2)$ 与 $B(2) - B(1)$ 独立，但 $B(3) - B(1)$ 与 $B(2)$ 不独立。
-17. **首达时公式的符号错误**：$P(T_a \leq t) = 2P(B(t) \geq a) = 2(1 - \Phi(a/\sqrt{t}))$。虽然 $P(B(t) \geq a) = P(B(t) \leq -a)$（对称性），但公式中使用的是 $P(B(t) \geq a)$ 不是 $P(B(t) \geq -a)$。
-18. **双边界期望首达时遗忘乘积形式**：$E[\min(T_a, T_{-b})] = ab$，不是 $a+b$，不是 $(a+b)/2$。注意 $a$ 和 $b$ 都是正数。
-
-### 生灭过程与排队论
-19. **细致平衡公式下标不匹配**：正确形式是 $\pi_i \lambda_i = \pi_{i+1} \mu_{i+1}$。常见错误是写成 $\pi_i \lambda_i = \pi_{i+1} \mu_i$ 或 $\pi_{i+1} \lambda_{i+1} = \pi_i \mu_i$。
-20. **M/M/1排队中遗忘平稳条件 $\rho < 1$**：当 $\rho \geq 1$ 时几何级数发散，不存在平稳分布。在应用 $\pi_n = (1-\rho)\rho^n$ 之前必须验证 $\rho < 1$。
-21. **生灭过程递推方向搞反**：从 $\pi_0$ 出发依次递推 $\pi_1, \pi_2, \ldots$。注意 $\pi_{i+1} = (\lambda_i / \mu_{i+1}) \pi_i$，分子是 $\lambda_i$（当前状态的出生率），分母是 $\mu_{i+1}$（目标状态的死亡率）。
-
-### 随机游走
-22. **混淆步数与位置的关系**：$S_n = 2k - n$，其中 $k$ 是向上步数。反过来 $k = (n + S_n)/2$。确认 $n+S_n$ 为偶数是概率非零的前提。
-
-### 更新过程
-23. **将初等更新定理作为精确等式使用**：初等更新定理给出的是极限性质 $\lim_{t\to\infty} m(t)/t = 1/\mu$，对有限 $t$ 仅是大致近似，不是精确等式。
-24. **遗忘均匀分布的均值公式**：$U(a,b)$ 的均值为 $(a+b)/2$，不是 $b/2$，不是 $b-a$。
-
-### 鞅与停时
-25. **Doob停止定理中停时必须有界**：定理要求 $T \leq K$ a.s.，若停时无界则结论不一定成立（需额外条件如一致可积性或 $E[T] < \infty$ 等）。
-
----
-
-## 关键公式速查表
-
-### Markov链基础
-
-| 公式名称 | 精确表达式 | 适用条件 |
-|---------|-----------|---------|
-| **平稳分布方程** | $\pi = \pi P$, $\sum_i \pi_i = 1$ | 有限状态Markov链 |
-| **Chapman-Kolmogorov方程** | $p_{ij}^{(m+n)} = \sum_k p_{ik}^{(m)} p_{kj}^{(n)}$ | 任意Markov链 |
-| **二状态平稳分布** | $\pi = \left(\frac{p_{21}}{p_{12}+p_{21}}, \frac{p_{12}}{p_{12}+p_{21}}\right)$ | $P = \begin{pmatrix}1-p_{12}&p_{12}\\p_{21}&1-p_{21}\end{pmatrix}$ |
-| **极限分布存在条件** | 不可约 + 非周期 + 正常返 $\Rightarrow$ $\lim P^n$ 存在 | 有限状态不可约非周期即遍历 |
-| **周期定义** | $d(i) = \gcd\{n \geq 1 : p_{ii}^{(n)} > 0\}$ | 任意Markov链 |
-| **吸收概率方程组** | $a_i = \sum_{j\in A} p_{ij} + \sum_{k\in T} p_{ik}a_k$ | 吸收Markov链 |
-
-### Poisson过程
-
-| 公式名称 | 精确表达式 | 适用条件 |
-|---------|-----------|---------|
-| **Poisson PMF** | $P(N(t)=k) = e^{-\lambda t}\frac{(\lambda t)^k}{k!}$ | $k = 0,1,2,\ldots$ |
-| **Poisson期望/方差** | $E[N(t)] = \lambda t$, $\operatorname{Var}(N(t)) = \lambda t$ | 齐次Poisson过程 |
-| **非齐次均值函数** | $\Lambda(t) = \int_0^t \lambda(s)\,ds$ | 非齐次Poisson过程 |
-| **Poisson叠加** | $N_1(t)+N_2(t) \sim \text{PP}(\lambda_1+\lambda_2)$ | $N_1 \perp N_2$ |
-| **等待时间分布** | $W_n \sim \text{Gamma}(n,\lambda)$，$f(t) = \frac{\lambda^n t^{n-1}e^{-\lambda t}}{(n-1)!}$ | $t > 0$ |
-| **到达间隔时间** | $T_i \sim \text{Exp}(\lambda)$ i.i.d. | 齐次Poisson过程 |
-
-### 复合Poisson过程
-
-| 公式名称 | 精确表达式 | 适用条件 |
-|---------|-----------|---------|
-| **期望** | $E[S(t)] = \lambda t \cdot E[X]$ | $N, X_i$ 独立 |
-| **方差** | $\operatorname{Var}(S(t)) = \lambda t \cdot E[X^2]$ | $N, X_i$ 独立 |
-| **二阶矩** | $E[X^2] = \operatorname{Var}(X) + (E[X])^2$ | 任意 $X$ |
-
-### Brownian运动
-
-| 公式名称 | 精确表达式 | 适用条件 |
-|---------|-----------|---------|
-| **协方差** | $\operatorname{Cov}(B(s), B(t)) = \min(s, t)$ | $s, t \geq 0$ |
-| **方差** | $\operatorname{Var}(B(t)) = t$ | $t \geq 0$ |
-| **增量分布** | $B(t) - B(s) \sim N(0, t-s)$ | $0 \leq s < t$ |
-| **鞅性质** | $E[B(t) \mid \mathcal{F}_s] = B(s)$ | $s < t$ |
-| **首达时概率（反射原理）** | $P(T_a \leq t) = 2(1 - \Phi(a/\sqrt{t}))$ | $a > 0, t > 0$ |
-| **双边界首达概率** | $P(T_a < T_{-b}) = \frac{b}{a+b}$ | $a, b > 0$ |
-| **双边界期望首达时** | $E[\min(T_a, T_{-b})] = ab$ | $a, b > 0$ |
-
-### 生灭过程与排队论
-
-| 公式名称 | 精确表达式 | 适用条件 |
-|---------|-----------|---------|
-| **细致平衡** | $\pi_i \lambda_i = \pi_{i+1} \mu_{i+1}$ | 生灭过程/可逆Markov链 |
-| **生灭平稳分布递推** | $\pi_{n} = \pi_0 \prod_{k=0}^{n-1} \frac{\lambda_k}{\mu_{k+1}}$ | 生灭过程 |
-| **M/M/1平稳分布** | $\pi_n = (1-\rho)\rho^n$, $\rho = \lambda/\mu$ | $\rho < 1$, $n = 0,1,2,\ldots$ |
-| **M/M/1平均队长** | $L = \frac{\rho}{1-\rho}$ | $\rho < 1$ |
-
-### 随机游走
-
-| 公式名称 | 精确表达式 | 适用条件 |
-|---------|-----------|---------|
-| **位置分布** | $P(S_n = m) = \binom{n}{\frac{n+m}{2}} \cdot 2^{-n}$ | $n+m$ 偶数，$\|m\| \leq n$ |
-| **期望与方差** | $E[S_n] = 0$, $\operatorname{Var}(S_n) = n$ | 对称随机游走 |
-
-### 更新过程
-
-| 公式名称 | 精确表达式 | 适用条件 |
-|---------|-----------|---------|
-| **初等更新定理** | $\lim_{t\to\infty} \frac{E[N(t)]}{t} = \frac{1}{\mu}$ | $\mu = E[X_1] < \infty$ |
-| **长期更新率** | $\text{更新率} = 1 / \mu$ | 任意更新过程 |
-
-### 指数分布与次序统计量
-
-| 公式名称 | 精确表达式 | 适用条件 |
-|---------|-----------|---------|
-| **指数分布独立性最小值** | $\min(\text{Exp}(\lambda_i)) \sim \text{Exp}(\sum \lambda_i)$ | $X_i$ 独立 |
-| **生存函数** | $P(\min X_i > t) = e^{-(\sum \lambda_i) t}$ | $t > 0$ |
-| **同参数型最小值期望** | $E[\min X_i] = 1/(n\lambda)$ | $X_i \sim \text{Exp}(\lambda)$ i.i.d. |
-
-### 鞅与停时
-
-| 公式名称 | 精确表达式 | 适用条件 |
-|---------|-----------|---------|
-| **鞅定义** | $E[M_{n+1} \mid \mathcal{F}_n] = M_n$ a.s. | $\{M_n\}$ 关于 $\{\mathcal{F}_n\}$ 可适 |
-| **Doob有界停时定理** | $E[M_T] = E[M_0]$ | $T$ 有界停时，$\{M_n\}$ 鞅 |
-| **停时过程的鞅表示** | $M_{T\wedge n} = M_0 + \sum_{k=1}^n (M_k - M_{k-1}) \mathbf{1}_{\{T \geq k\}}$ | 任意鞅与停时 |
-
----
-
-## 计算题标准解法速查
-
-### 类型A：Markov链平稳分布
-**步骤**：写出 $\pi P = \pi$ $\to$ 添加 $\sum \pi_i = 1$ $\to$ 解线性方程组
-
-例：二状态 $P = \begin{pmatrix}1/3 & 2/3\\ 1/2 & 1/2\end{pmatrix}$：$\pi_1 = \frac{1}{3}\pi_1 + \frac{1}{2}\pi_2$，解得 $\pi = (3/7, 4/7)$。
-
-### 类型B：随机游走位置概率
-**步骤**：$S_n = m$ $\to$ 向上步数 $k = (n+m)/2$ $\to$ $P = \binom{n}{k} \cdot 2^{-n}$
-
-例：$n=6$，$m=0 \Rightarrow k=3$，$P = \binom{6}{3} \cdot 2^{-6} = 20/64 = 5/16$。
-
-### 类型C：Poisson过程概率
-**步骤**：确定 $\lambda$ 和时间 $t$ $\to$ 代入 $P(N(t)=k) = e^{-\lambda t}(\lambda t)^k/k!$
-
-例：$\lambda=2$，$t=1$，$k=3$：$P = e^{-2} \cdot 8/6 = (4/3)e^{-2}$。
-
-### 类型D：吸收概率
-**步骤**：列出瞬态的吸收概率方程 $\to$ 设定边界条件 $\to$ 解方程组
-
-例：四状态链，状态1和3为吸收态。$a_2 = (1/3)a_1 + (1/3)a_3 + (1/3)a_4 = (1/3) + (1/3)a_4$，解得 $a_2 = 2/5$。
-
-### 类型E：生灭过程平稳分布
-**步骤**：列出 $\lambda_i, \mu_i$ $\to$ 细致平衡递推 $\pi_{i+1} = (\lambda_i/\mu_{i+1})\pi_i$ $\to$ 归一化
-
-例：$\lambda_0=3, \mu_1=2, \lambda_1=1, \mu_2=4$：$\pi_1 = (3/2)\pi_0$, $\pi_2 = (3/8)\pi_0$，$\pi_0 = 8/23$。
-
-### 类型F：复合Poisson过程期望/方差
-**步骤**：确认 $\lambda$ 和时间 $t$ $\to$ 计算 $E[X]$ 和 $E[X^2]$ $\to$ $E[S] = \lambda t E[X]$，$\operatorname{Var}(S) = \lambda t E[X^2]$
-
-例：$\lambda=5$，$t=4$，$E[X]=20$，$\operatorname{Var}(X)=16$：$E[S]=400$，$\operatorname{Var}(S)=8320$。
-
-### 类型G：Brownian运动协方差
-**步骤**：写出含 $B(t)$ 的线性组合 $\to$ 利用 $\operatorname{Cov}(B(s),B(t)) = \min(s,t)$ 展开
-
-例：$\operatorname{Cov}(B(1)+B(2), B(3)) = \operatorname{Cov}(B(1),B(3)) + \operatorname{Cov}(B(2),B(3)) = \min(1,3) + \min(2,3) = 1+2 = 3$。
-
-### 类型H：Brownian运动首达时
-**步骤**：识别 $a, b > 0$ $\to$ $P(T_a < T_{-b}) = b/(a+b)$ $\to$ $E[\min(T_a, T_{-b})] = ab$
-
-例：$a=b=1$：$P(T_1 < T_{-1}) = 1/2$，$E[T] = 1 \cdot 1 = 1$。
-
-### 类型I：更新过程
-**步骤**：确定 $X_i$ 的分布和均值 $\mu$ $\to$ 长期更新率 $= 1/\mu$ $\to$ 期望次数 $\approx t/\mu$
-
-例：$X_i \sim U(0,2)$，$\mu = 1$，长期更新率 $=1$ 次/年。
-
-### 类型J：非齐次Poisson过程
-**步骤**：计算 $\Lambda(t) = \int_0^t \lambda(s)\,ds$ $\to$ 用于期望和概率计算
-
-例：$\lambda(t) = 2t$，$\Lambda(3) = 9$，$\Lambda(2)-\Lambda(1) = 3$。
-
-### 类型K：Markov链极限分布
-**步骤**：验证不可约 $\to$ 验证非周期 $\to$ 求平稳分布即为极限分布
-
-例：$P$ 含自环及回路 $1\to2\to3\to1$，不可约非周期，极限分布 $=$ 平稳分布 $=(1/3,1/3,1/3)$。
-
----
-
-## 证明题标准策略速查
-
-### 策略1：全概率公式 + Markov性 + 时齐性
-**适用**：Chapman-Kolmogorov方程（idx 15）
-
-模式：在中间时刻 $m$ 对状态做全概率展开 $\to$ 利用Markov性消去历史条件 $\to$ 利用时齐性转化时间跨度 $\to$ 得到乘积形式。
-
-### 策略2：增量分解 + 条件期望
-**适用**：Brownian运动鞅性质（idx 14）
-
-模式：$B(t) = (B(t)-B(s)) + B(s)$ $\to$ 取条件期望 $\to$ 独立增量使得 $E[B(t)-B(s) \mid \mathcal{F}_s] = 0$ $\to$ 得证。
-
-### 策略3：细致平衡 + 递推 + 几何级数归一化
-**适用**：M/M/1排队平稳分布（idx 16）
-
-模式：列出生灭率 $\to$ 写出细致平衡 $\lambda \pi_n = \mu \pi_{n+1}$ $\to$ 递推 $\pi_n = \rho^n \pi_0$ $\to$ 归一化 $\sum \pi_n = 1 \Rightarrow \pi_0 = 1-\rho$。
-
-### 策略4：特征函数法 / 矩母函数法
-**适用**：Poisson过程等待时间分布（idx 17）
-
-模式：$W_n = \sum T_i$（$T_i \sim \text{Exp}(\lambda)$ i.i.d.）$\to$ 求特征函数 $\phi_{W_n}(t) = (\lambda/(\lambda-it))^n$ $\to$ 识别为 $\text{Gamma}(n,\lambda)$ 的特征函数 $\to$ 由唯一性得证。
-
-### 策略5：鞅差表示 + 停时可测性 + 有界性
-**适用**：Doob有界停时定理（idx 18）
-
-模式：$M_{T\wedge n} = M_0 + \sum_{k=1}^n (M_k-M_{k-1})\mathbf{1}_{\{T \geq k\}}$ $\to$ 验证 $\mathbf{1}_{\{T \geq k\}} \in \mathcal{F}_{k-1}$ $\to$ 鞅差条件期望为零 $\to$ $E[M_{T\wedge n}] = E[M_0]$ $\to$ 取 $n=K$（有界停时）。
-
-### 策略6：反射路径 + 概率分解 + 对称性
-**适用**：Brownian运动反射原理（idx 19）
-
-模式：$P(T_a \leq t) = P(T_a \leq t, B(t) > a) + P(T_a \leq t, B(t) < a)$ $\to$ 第一项 $= P(B(t) > a)$ $\to$ 第二项通过反射路径 $\tilde{B}(s) = 2a - B(s)$ 转化为 $P(B(t) > a)$ $\to$ 总概率 $= 2P(B(t) > a)$。
-
----
-
-## 参考资源
-
-- 配套 sympy 验证脚本：`test_stochastic_processes.py`
-- 数据集来源：`随机过程.md`（20题，涵盖全部核心知识点）
-- 推荐教材：《随机过程》（Sheldon Ross）、《应用随机过程》（林元烈）、《随机过程导论》（Lawler）、《概率、随机变量与随机过程》（Papoulis）
-- 在线工具：SymPy Live、SageMath

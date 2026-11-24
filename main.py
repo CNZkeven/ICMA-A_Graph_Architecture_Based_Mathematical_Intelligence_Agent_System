@@ -63,9 +63,16 @@ def parse_args() -> argparse.Namespace:  # 定义解析命令行参数函数
 
 
 def solve_item(agent: ReasoningAgent, item: Dict) -> Dict:  # 定义解决单个项目函数
+    # Keep the public input contract (problem + idx) while honoring optional
+    # evaluator metadata when a harness supplies it.  The official JSONL has no
+    # answer/type fields, so this does not couple runtime solving to the answer set.
+    metadata = {"idx": item["idx"]}
+    for key in ("type", "question_mode", "question_type", "subject", "category"):
+        if key in item:
+            metadata[key] = item[key]
     result = agent.solve(  # 调用代理解决方法
         problem=item["problem"],  # 传入问题内容
-        metadata={"idx": item["idx"]},  # 传入元数据（索引）
+        metadata=metadata,  # 传入索引及可选题型/学科元数据
     )
     return build_output_record(item, result)  # 构建并返回输出记录
 

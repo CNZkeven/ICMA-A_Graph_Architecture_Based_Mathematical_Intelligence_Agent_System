@@ -1,478 +1,260 @@
-# pip install sympy numpy scipy
-"""
-测度积分 — 全20道习题验算脚本
-===============================
-覆盖知识点：Lebesgue 积分、Lebesgue 测度、简单函数积分、Lp 空间与范数、
-单调收敛定理、控制收敛定理、Fatou 引理、Lp 范数不等式、可测函数、
-绝对连续函数、Fubini 定理、Radon-Nikodym 定理、Chebyshev 不等式、
-Holder 不等式、Minkowski 不等式、收敛模式、卷积、测度构造。
+r'''
+# 测度积分：验证提示词与知识点索引
+运行环境：conda activate Competition
+文件性质：这是提供给数学智能体的提示资料，包含可摘取的 Python/SymPy 核验片段，不是可直接运行的完整程序。
 
-每道题独立为一个函数，内置标准答案比对逻辑。
-可单独运行任意区块，也可整体执行。
-"""
+## 使用规则
+- 先从题面确定底空间、$\sigma$-代数、测度、函数定义域和“几乎处处”的量词；题面没有给出的测度或支配函数不得补造。
+- 每个结论要同时说明可测性、积分存在性和适用定理的前提；Riemann 积分的直觉不能替代 Lebesgue 条件。
+- 只在条件完整时建议符号或数值核验；核验应检查原定义或原积分，不能只将候选结论回代自身。
 
-import math
-import sys
-import io
-# 强制 stdout 使用 UTF-8 编码，避免 GBK 无法打印 Unicode 下标/上标
-sys.stdout = io.TextIOWrapper(sys.stdout.buffer, encoding='utf-8')
+## 知识点 1：测度、外测度与可测性
+- 识别可数可加性、单调性、连续性，以及 Caratheodory 可测性条件。
+- 集合运算题先写明补集、可数并交所在的 $\sigma$-代数；区分“零测集”和“空集”。
+- 若函数以指标函数、简单函数或分层集合给出，先验证各层集合可测。
 
-# ============================================================
-# 辅助函数
-# ============================================================
+## 知识点 2：Lebesgue 积分与简单函数
+- 非负简单函数 $\varphi=\sum a_i\mathbf 1_{E_i}$ 满足 $\int\varphi\,d\mu=\sum a_i\mu(E_i)$；一般函数先分解为正负部。
+- 可积的判据是 $\int |f|\,d\mu<\infty$，不能只证明形式积分存在。
+- 处理分段函数时分别核对每一段的可测性、绝对可积性和端点归属。
 
-def check(label, computed, expected, rel_tol=1e-9, abs_tol=1e-9):
-    """比对 computed 与 expected，打印验证通过/不通过"""
-    if isinstance(expected, (int, float)) and isinstance(computed, (int, float)):
-        ok = math.isclose(computed, expected, rel_tol=rel_tol, abs_tol=abs_tol)
-    else:
-        ok = computed == expected
-    status = "验证通过" if ok else "验证不通过"
-    print(f"  [{status}] {label}: computed={computed}, expected={expected}")
-    return ok
+## 知识点 3：收敛定理
+- 单调收敛定理：非负且 $f_n\uparrow f$；结论允许积分为无穷大。
+- Fatou 引理：非负函数列，方向为 $\int\liminf f_n\le\liminf\int f_n$。
+- 支配收敛定理：逐点几乎处处收敛并存在 $g\in L^1$ 使 $|f_n|\le g$；必须把支配函数写出来。
+- 换极限与积分前，明确使用的是单调、支配还是一致可积等条件。
 
+## 知识点 4：$L^p$ 空间与不等式
+- $\|f\|_p=(\int|f|^p)^{1/p}$，$p=\infty$ 使用本性上确界；先确认函数等价类和测度空间。
+- Holder 不等式要求 $1/p+1/q=1$；Minkowski 给出三角不等式。不要把不同 $p$ 的范数大小关系脱离测度空间直接比较。
 
-def riemann_integral(f, a, b, n=100000):
-    """矩形法近似黎曼积分（尾调用可加分块验证）"""
-    dx = (b - a) / n
-    s = 0.0
-    for i in range(n):
-        x = a + (i + 0.5) * dx
-        s += f(x)
-    return s * dx
+## 知识点 5：Fubini、Tonelli 与 Radon--Nikodym
+- 非负函数可用 Tonelli；符号函数交换二重积分通常需要绝对可积性以使用 Fubini。
+- Radon--Nikodym 导数需先核对绝对连续性 $\nu\ll\mu$ 和 $\sigma$-有限等前提。
 
+## Python 代码片段：绝对可积与简单函数
+```python
+import sympy as sp
 
-def print_header(idx, topic):
-    print(f"\n{'='*60}")
-    print(f" 题 {idx}: {topic}")
-    print(f"{'='*60}")
+# 从题面填入 f、x、a、b；先检查绝对可积，再报告积分。
+absolute_integral = sp.integrate(sp.Abs(f), (x, a, b))
+if absolute_integral.is_finite is False:
+    raise ValueError("题设函数未通过绝对可积检查")
+integral_value = sp.integrate(f, (x, a, b))
 
+# 对简单函数 sum(a_i * 1_{E_i})，由题面给出的系数与测度组成。
+simple_integral = sum(coefficient * measure for coefficient, measure in layers)
+```
 
-# ============================================================
-# 题 0: Lebesgue 积分 — ∫_{[0,1]} x² dm = 1/3
-# ============================================================
-def verify_0():
-    print_header(0, "Lebesgue 积分 (Riemann 可积函数)")
-    # 解析积分
-    from sympy import integrate, Symbol
-    x = Symbol('x')
-    result = integrate(x**2, (x, 0, 1))
-    expected = 1/3
-    check("∫₀¹ x² dx", float(result), expected)
-    # 数值验证
-    num = riemann_integral(lambda x: x*x, 0, 1)
-    check("数值积分 ∫₀¹ x² dx", num, expected, rel_tol=1e-4)
+## Python 代码片段：极限与积分的换序核验
+```python
+import sympy as sp
 
+# 仅在题面已给出收敛/支配条件时做符号交叉检查；代码不能证明 a.e. 支配。
+n = sp.symbols("n", integer=True, positive=True)
+pointwise_limit = sp.limit(f_n, n, sp.oo)
+candidate_integral = sp.integrate(pointwise_limit, (x, a, b))
+term_integrals = sp.integrate(f_n, (x, a, b))
+limit_of_integrals = sp.limit(term_integrals, n, sp.oo)
+check = sp.simplify(candidate_integral - limit_of_integrals)
+```
 
-# ============================================================
-# 题 1: Lebesgue 测度 — 可数集零测
-# ============================================================
-def verify_1():
-    print_header(1, "Lebesgue 测度 (可数集零测)")
-    # 理论结果：可数集零测
-    m_Q = 0.0
-    m_complement = 1.0
-    check("m(Q∩[0,1])", m_Q, 0.0)
-    check("m([0,1]\\Q)", m_complement, 1.0)
-    # 额外：采样验证密度 — 用随机点估算有理数占比（仅作直观验证）
-    import random
-    random.seed(42)
-    count = 0
-    trials = 10000
-    for _ in range(trials):
-        # 用 Farey 近似验证 — 实际不会碰到精确有理数，仅供教学参考
-        pass
-    # 直接断言理论值
-    print("  [说明] 可数集零测是基本定理，理论验证通过。")
+## Python 代码片段：$L^p$ 范数与 Holder 检查
+```python
+import sympy as sp
 
+# p、q 必须由题面满足 1/p + 1/q = 1。
+norm_f_p = sp.integrate(sp.Abs(f) ** p, (x, a, b)) ** (sp.S.One / p)
+norm_g_q = sp.integrate(sp.Abs(g) ** q, (x, a, b)) ** (sp.S.One / q)
+pairing = sp.integrate(sp.Abs(f * g), (x, a, b))
+holder_gap = sp.simplify(norm_f_p * norm_g_q - pairing)  # 应在可用时非负
+```
 
-# ============================================================
-# 题 2: 简单函数积分
-# ============================================================
-def verify_2():
-    print_header(2, "简单函数积分")
-    # f(x) = 2 on [0,1), 3 on [1,2]
-    m1 = 1.0  # m([0,1))
-    m2 = 1.0  # m([1,2])
-    integral = 2 * m1 + 3 * m2
-    check("∫ f dm = 2×1 + 3×1", integral, 5.0)
+## 输出契约
+- 给出所用定理及全部前提、关键等式和最终结论；涉及“几乎处处”时必须保留该限定。
+- 若条件不足，明确说明无法交换极限/积分或无法应用定理，不能以示例数据替代题面。
+- 只摘取与当前题目匹配的代码片段，并将其中的变量、边界和参数全部替换为题面数据。
 
+## 模块级验证代码（与测度积分 skill 的 19 个主知识点对应）
 
-# ============================================================
-# 题 3: L² 范数 — ‖x‖₂ = √3/3
-# ============================================================
-def verify_3():
-    print_header(3, "L² 空间与范数")
-    from sympy import integrate, Symbol, sqrt
-    x = Symbol('x')
-    norm_sq = integrate(x**2, (x, 0, 1))
-    norm = float(sqrt(norm_sq))
-    expected = math.sqrt(3) / 3
-    check("‖x‖₂ = √(∫₀¹ x² dx)", norm, expected)
+## Python 代码片段：模块1 Lebesgue 测度基础
+```python
+import sympy as sp
 
+interval_measure = sp.simplify(upper - lower)
+countable_union_bound = sp.simplify(sum(measures))
+measure_residual = sp.simplify(measure_union - countable_union_bound)
+```
 
-# ============================================================
-# 题 4: 单调收敛定理 — lim∫₀¹ nx/(1+n²x²) dx = 0
-# ============================================================
-def verify_4():
-    print_header(4, "单调收敛定理")
-    from sympy import integrate, Symbol, log, limit, oo
-    x = Symbol('x')
-    n = Symbol('n', positive=True, integer=True)
-    # 解析积分
-    expr = n * x / (1 + n**2 * x**2)
-    analytic_int = integrate(expr, (x, 0, 1))
-    # 简化: ∫₀¹ nx/(1+n²x²)dx = ln(1+n²)/(2n)
-    import sympy as sp
-    analytic_simplified = sp.simplify(analytic_int)
-    check("解析积分式", str(analytic_simplified), "log(n**2 + 1)/(2*n)")
-    # 计算极限 n → ∞
-    lim_val = float(limit(analytic_simplified, n, oo))
-    check("lim ∫ = 0", lim_val, 0.0)
-    # 数值验证（n 较大时）
-    for n_val in [10, 100, 1000]:
-        val = float(integrate(expr.subs(n, n_val), (x, 0, 1)))
-        print(f"    n={n_val}: ∫={val:.6f}")
+## Python 代码片段：模块2 可测函数
+```python
+import sympy as sp
 
+x = sp.symbols("x", real=True)
+level_set = sp.solve_univariate_inequality(function >= threshold, x)
+measurable_indicator = sp.Piecewise((1, function >= threshold), (0, True))
+```
 
-# ============================================================
-# 题 5: 控制收敛定理 — lim∫₀^∞ sin(nx)/(n(1+x²)) dx = 0
-# ============================================================
-def verify_5():
-    print_header(5, "控制收敛定理")
-    from scipy import integrate as sci_int
-    import numpy as np
+## Python 代码片段：模块3 Lebesgue 积分
+```python
+import sympy as sp
 
-    def integrand(x, n):
-        return np.sin(n * x) / (n * (1 + x**2))
+positive_part = sp.Max(function, 0)
+negative_part = sp.Max(-function, 0)
+integral_value = sp.integrate(positive_part, (x, lower, upper)) - sp.integrate(
+    negative_part, (x, lower, upper)
+)
+```
 
-    for n_val in [1, 5, 10, 50, 100]:
-        val, _ = sci_int.quad(lambda x: integrand(x, n_val), 0, np.inf, limit=200)
-        print(f"    n={n_val}: ∫={val:.8f}")
-        if n_val == 100:
-            check(f"∫ sin({n_val}x)/({n_val}(1+x²)) dx", val, 0.0, abs_tol=0.01)
+## Python 代码片段：模块4 简单函数积分
+```python
+import sympy as sp
 
+simple_integral = sp.simplify(sum(value * measure_set for value, measure_set in simple_terms))
+simple_function = sum(value * sp.Heaviside(x - endpoint) for value, endpoint in simple_terms)
+```
 
-# ============================================================
-# 题 6: Fatou 引理 — 严格不等式
-# ============================================================
-def verify_6():
-    print_header(6, "Fatou 引理严格不等式")
-    # f_n(x) = n on (0, 1/n]
-    # ∫ f_n = n * (1/n) = 1
-    int_fn = 1.0
-    liminf_int = 1.0
-    # liminf f_n = 0 a.e., ∫ liminf f_n = 0
-    int_liminf = 0.0
-    check("∫ liminf f_n", int_liminf, 0.0)
-    check("liminf ∫ f_n", liminf_int, 1.0)
-    check("严格不等式: 0 < 1", int_liminf < liminf_int, True)
+## Python 代码片段：模块5 Lp 空间与范数
+```python
+import sympy as sp
 
+p = sp.symbols("p", positive=True)
+lp_power = sp.integrate(sp.Abs(function) ** p, (x, lower, upper))
+lp_norm = sp.simplify(lp_power ** (1 / p))
+```
 
-# ============================================================
-# 题 7: Lp 范数不等式 — ‖x^{1/3}‖₁ ≤ ‖x^{1/3}‖₃
-# ============================================================
-def verify_7():
-    print_header(7, "Lp 范数不等式")
-    from sympy import integrate, Symbol
-    x = Symbol('x')
-    # L¹ 范数
-    norm1 = float(integrate(x**(1/3), (x, 0, 1)))
-    expected1 = 3/4
-    check("‖f‖₁ = ∫₀¹ x^{1/3} dx", norm1, expected1)
-    # L³ 范数
-    norm3_cube = float(integrate(x, (x, 0, 1)))  # (x^{1/3})³ = x
-    norm3 = norm3_cube ** (1/3)
-    expected3 = (1/2) ** (1/3)
-    check("‖f‖₃ = (∫₀¹ x dx)^{1/3}", norm3, expected3)
-    check("‖f‖₁ ≤ ‖f‖₃", norm1 <= norm3, True)
+## Python 代码片段：模块6 单调收敛定理（Levi 引理）
+```python
+import sympy as sp
 
+limit_function = sp.limit(monotone_sequence, n, sp.oo)
+limit_of_integrals = sp.limit(sp.integrate(monotone_sequence, (x, lower, upper)), n, sp.oo)
+integral_of_limit = sp.integrate(limit_function, (x, lower, upper))
+monotone_gap = sp.simplify(limit_of_integrals - integral_of_limit)
+```
 
-# ============================================================
-# 题 8: 可测函数 — Dirichlet 函数 Lebesgue 可积
-# ============================================================
-def verify_8():
-    print_header(8, "可测函数 (Dirichlet 函数)")
-    # χ_Q a.e. 等于 0，Lebesgue 积分 = 0
-    check("∫ χ_Q dm = 0 (a.e. 等于 0)", 0.0, 0.0)
-    print("  [说明] m(Q∩[0,1])=0 ⇒ χ_Q=0 a.e. ⇒ ∫=0。理论断言验证通过。")
+## Python 代码片段：模块7 控制收敛定理
+```python
+import sympy as sp
 
+pointwise_limit = sp.limit(function_sequence, n, sp.oo)
+dominated_gap = sp.simplify(
+    sp.limit(sp.integrate(function_sequence, (x, lower, upper)), n, sp.oo)
+    - sp.integrate(pointwise_limit, (x, lower, upper))
+)
+dominating_integral = sp.integrate(dominating_function, (x, lower, upper))
+```
 
-# ============================================================
-# 题 9: 绝对连续函数 — Newton-Leibniz 公式
-# ============================================================
-def verify_9():
-    print_header(9, "绝对连续函数")
-    from sympy import integrate, Symbol
-    x = Symbol('x')
-    # f(x)=x², f'(x)=2x
-    integral = float(integrate(2*x, (x, 0, 1)))
-    nl_value = 1**2 - 0**2
-    check("∫₀¹ 2x dx", integral, 1.0)
-    check("f(1)-f(0) = 1", nl_value, 1.0)
-    check("Newton-Leibniz: ∫ f' = f(1)-f(0)", integral, float(nl_value))
+## Python 代码片段：模块8 Fatou 引理
+```python
+import sympy as sp
 
+fatou_left = sp.integrate(sp.limitinf(nonnegative_sequence, n), (x, lower, upper))
+fatou_right = sp.limitinf([sp.integrate(nonnegative_sequence.subs(n, k), (x, lower, upper))
+                            for k in index_values])
+fatou_gap = sp.simplify(fatou_right - fatou_left)
+```
 
-# ============================================================
-# 题 10: Fubini 定理 — ∬_{[0,1]²} xy dm₂ = 1/4
-# ============================================================
-def verify_10():
-    print_header(10, "Fubini 定理")
-    from sympy import integrate, Symbol
-    x, y = Symbol('x'), Symbol('y')
-    # 先 x 后 y
-    order1 = integrate(integrate(x*y, (x, 0, 1)), (y, 0, 1))
-    # 先 y 后 x
-    order2 = integrate(integrate(x*y, (y, 0, 1)), (x, 0, 1))
-    expected = 0.25
-    check("∬ xy dm₂ (先x后y)", float(order1), expected)
-    check("∬ xy dm₂ (先y后x)", float(order2), expected)
+## Python 代码片段：模块9 Lp 范数不等式
+```python
+import sympy as sp
 
+holder_gap = sp.simplify(lp_norm(f * g, 1) - lp_norm(f, p) * lp_norm(g, q))
+minkowski_gap = sp.simplify(lp_norm(f + g, p) - lp_norm(f, p) - lp_norm(g, p))
+```
 
-# ============================================================
-# 题 11: Lp 范数与 L∞ 极限
-# ============================================================
-def verify_11():
-    print_header(11, "Lp 范数与 L∞ 极限")
-    from sympy import integrate, Symbol, exp, oo
-    x = Symbol('x')
-    # L∞ 范数
-    linf = 1.0  # e^0 = 1，递减函数
-    check("‖e^{-x}‖_∞ = 1", linf, 1.0)
-    # L¹ 范数
-    l1 = float(integrate(exp(-x), (x, 0, 1)))
-    expected_l1 = 1 - math.exp(-1)
-    check("‖e^{-x}‖₁ = ∫₀¹ e^{-x} dx", l1, expected_l1)
-    # L² 范数
-    l2_sq = float(integrate(exp(-2*x), (x, 0, 1)))
-    l2 = math.sqrt(l2_sq)
-    expected_l2 = math.sqrt((1 - math.exp(-2)) / 2)
-    check("‖e^{-x}‖₂", l2, expected_l2)
-    # L¹⁰ 范数
-    l10_pow = float(integrate(exp(-10*x), (x, 0, 1)))
-    l10 = l10_pow ** (1/10)
-    expected_l10 = ((1 - math.exp(-10)) / 10) ** (1/10)
-    check("‖e^{-x}‖₁₀", l10, expected_l10)
-    # 验证趋势：p 增大时 ‖f‖_p 趋近 ‖f‖_∞
-    print(f"    ‖f‖₁={l1:.6f}, ‖f‖₂={l2:.6f}, ‖f‖₁₀={l10:.6f}, ‖f‖_∞={linf}")
-    print(f"    趋势: 1→{l1:.4f} < 2→{l2:.4f} < 10→{l10:.4f} < ∞→{linf}")
+## Python 代码片段：模块10 Fubini 定理
+```python
+import sympy as sp
 
+x, y = sp.symbols("x y", real=True)
+iterated_xy = sp.integrate(sp.integrate(integrand, (y, y_lower, y_upper)),
+                           (x, x_lower, x_upper))
+iterated_yx = sp.integrate(sp.integrate(integrand, (x, x_lower, x_upper)),
+                           (y, y_lower, y_upper))
+fubini_gap = sp.simplify(iterated_xy - iterated_yx)
+```
 
-# ============================================================
-# 题 12: Levi 引理 — ∫₀¹ -ln x dm = 1
-# ============================================================
-def verify_12():
-    print_header(12, "Levi 引理 / 单调收敛")
-    from sympy import integrate, Symbol, log, oo
-    x = Symbol('x')
-    # ∫₀¹ -ln x dx 作为黎曼反常积分
-    result = float(integrate(-log(x), (x, 0, 1)))
-    check("∫₀¹ -ln x dx", result, 1.0)
+## Python 代码片段：模块11 绝对连续函数与 Newton--Leibniz 公式
+```python
+import sympy as sp
 
+x, t = sp.symbols("x t", real=True)
+reconstructed = function_at_left + sp.integrate(derivative.subs(x, t), (t, left, x))
+newton_leibniz_gap = sp.simplify(reconstructed - function)
+```
 
-# ============================================================
-# 题 13: Radon-Nikodym 定理
-# ============================================================
-def verify_13():
-    print_header(13, "Radon-Nikodym 定理")
-    from sympy import integrate, Symbol
-    x = Symbol('x')
-    nu_val = float(integrate(2*x, (x, 0, 1)))
-    check("ν([0,1]) = ∫₀¹ 2x dx = 1", nu_val, 1.0)
-    check("dν/dμ = 2x (从定义直接读取)", True, True)
-    print("  [说明] dν/dμ=2x 由 ν(E)=∫_E 2x dμ 直接读出。理论验证通过。")
+## Python 代码片段：模块12 Radon--Nikodym 定理
+```python
+import sympy as sp
 
+candidate_density = sp.simplify(sp.diff(cumulative_measure, x))
+measure_reconstruction = sp.integrate(candidate_density, (x, lower, upper))
+rn_gap = sp.simplify(measure_reconstruction - total_measure)
+```
 
-# ============================================================
-# 题 14: Chebyshev 不等式
-# ============================================================
-def verify_14():
-    print_header(14, "Chebyshev 不等式")
-    from sympy import integrate, Symbol
-    x = Symbol('x')
-    # 左端: m({x² ≥ 1/4}) = m([1/2, 1]) = 1/2
-    left = 0.5
-    check("m({x²≥1/4}) = m([1/2,1])", left, 0.5)
-    # 右端: (1/λ) ∫ f = 4 * ∫₀¹ x² dx = 4 * 1/3 = 4/3
-    int_f = float(integrate(x**2, (x, 0, 1)))
-    right = 4 * int_f
-    expected_right = 4/3
-    check("(1/λ)∫f = 4 × 1/3", right, expected_right)
-    check("Chebyshev: 0.5 ≤ 4/3", left <= right, True)
+## Python 代码片段：模块13 Chebyshev 不等式
+```python
+import sympy as sp
 
+chebyshev_bound = sp.simplify(variance / deviation ** 2)
+event_indicator_expectation = sp.simplify(sp.integrate(indicator * density, (x, lower, upper)))
+```
 
-# ============================================================
-# 题 15: Holder 不等式 (Cauchy-Schwarz)
-# ============================================================
-def verify_15():
-    print_header(15, "Holder 不等式")
-    from sympy import integrate, Symbol, sqrt
-    x = Symbol('x')
-    # ∫ fg = ∫ x(1-x) dx
-    int_fg = float(integrate(x * (1 - x), (x, 0, 1)))
-    expected_fg = 1/6
-    check("∫₀¹ x(1-x) dx", int_fg, expected_fg)
-    # ‖f‖₂ = √(∫ x² dx)
-    norm_f = float(sqrt(integrate(x**2, (x, 0, 1))))
-    # ‖g‖₂ = √(∫ (1-x)² dx)
-    norm_g = float(sqrt(integrate((1 - x)**2, (x, 0, 1))))
-    product = norm_f * norm_g
-    expected_product = 1/3
-    check("‖x‖₂‖1-x‖₂ = (1/√3)×(1/√3) = 1/3", product, expected_product)
-    check("Holder: 1/6 ≤ 1/3", int_fg <= product, True)
+## Python 代码片段：模块14 Holder 不等式
+```python
+import sympy as sp
 
+lhs = sp.integrate(sp.Abs(f * g), (x, lower, upper))
+rhs = lp_norm(f, p) * lp_norm(g, q)
+holder_residual = sp.simplify(rhs - lhs)
+```
 
-# ============================================================
-# 题 16: Minkowski 不等式
-# ============================================================
-def verify_16():
-    print_header(16, "Minkowski 不等式")
-    from sympy import integrate, Symbol, sqrt, Rational
-    x = Symbol('x')
-    # ‖f+g‖₂ = √(∫₀¹ (x+x²)² dx)
-    integrand = (x + x**2)**2
-    int_fg = float(integrate(integrand, (x, 0, 1)))
-    norm_fg = math.sqrt(int_fg)
-    expected_norm_fg = math.sqrt(31/30)  # 1/3+1/2+1/5=31/30
-    check("‖x+x²‖₂ = √(31/30)", norm_fg, expected_norm_fg)
-    # ‖f‖₂
-    norm_f = float(sqrt(integrate(x**2, (x, 0, 1))))
-    # ‖g‖₂
-    norm_g = float(sqrt(integrate(x**4, (x, 0, 1))))  # (x²)² = x⁴
-    sum_norms = norm_f + norm_g
-    expected_sum = math.sqrt(5)/5 + math.sqrt(3)/3
-    check("‖x‖₂+‖x²‖₂ = √5/5+√3/3", sum_norms, expected_sum)
-    check("Minkowski: ‖f+g‖₂ ≤ ‖f‖₂+‖g‖₂", norm_fg <= sum_norms, True)
-    print(f"    ‖f+g‖₂={norm_fg:.6f}, ‖f‖₂+‖g‖₂={sum_norms:.6f}, 差={sum_norms - norm_fg:.6f}")
+## Python 代码片段：模块15 Minkowski 不等式
+```python
+import sympy as sp
 
+lhs = lp_norm(f + g, p)
+rhs = lp_norm(f, p) + lp_norm(g, p)
+minkowski_residual = sp.simplify(rhs - lhs)
+```
 
-# ============================================================
-# 题 17: 收敛模式 — a.e. 收敛与 L¹ 收敛
-# ============================================================
-def verify_17():
-    print_header(17, "收敛模式 (a.e. vs L¹)")
-    from sympy import integrate, Symbol
-    x = Symbol('x')
-    # ‖f_n‖₁ = ∫₀¹ x^n dx = 1/(n+1)
-    for n_val in [1, 5, 10, 50, 100]:
-        norm = float(integrate(x**n_val, (x, 0, 1)))
-        expected = 1 / (n_val + 1)
-        print(f"    n={n_val}: ‖f_n‖₁={norm:.6f}, expected={expected:.6f}")
-        if n_val == 100:
-            check("‖f_100‖₁ = 1/101", norm, expected)
-    check("lim ‖f_n‖₁ = 0", 0.0, 0.0)
-    # 验证 a.e. 收敛
-    print("  [说明] xⁿ → 0 在 [0,1) 上, x=1 处单点零测 ⇒ a.e. 收敛于 0。理论验证通过。")
+## Python 代码片段：模块16 a.e. 收敛与 Lp 收敛
+```python
+import sympy as sp
 
+almost_everywhere_limit = sp.limit(function_sequence, n, sp.oo)
+lp_error = sp.integrate(sp.Abs(function_sequence - limit_function) ** p,
+                        (x, lower, upper)) ** (1 / p)
+lp_limit = sp.limit(lp_error, n, sp.oo)
+```
 
-# ============================================================
-# 题 18: 卷积 — χ_{[0,1]} * χ_{[0,1]}
-# ============================================================
-def verify_18():
-    print_header(18, "卷积")
-    import numpy as np
+## Python 代码片段：模块17 卷积
+```python
+import sympy as sp
 
-    def conv_triangle(t):
-        """χ_{[0,1]} * χ_{[0,1]} 的解析表达式"""
-        if t <= 0:
-            return 0.0
-        elif 0 < t <= 1:
-            return t
-        elif 1 < t <= 2:
-            return 2 - t
-        else:
-            return 0.0
+t = sp.symbols("t", real=True)
+convolution = sp.integrate(first_function(t) * second_function(x - t),
+                           (t, -sp.oo, sp.oo))
+convolution_check = sp.simplify(sp.integrate(convolution, (x, -sp.oo, sp.oo))
+                                - total_first * total_second)
+```
 
-    # 验证关键点
-    check("h(0)", conv_triangle(0), 0.0)
-    check("h(0.5)", conv_triangle(0.5), 0.5)
-    check("h(1) = 1", conv_triangle(1), 1.0)
-    check("h(1.5)", conv_triangle(1.5), 0.5)
-    check("h(2)", conv_triangle(2), 0.0)
+## Python 代码片段：模块18 测度构造与绝对连续
+```python
+import sympy as sp
 
-    # 数值卷积验证
-    def box(x):
-        return 1.0 if 0 <= x <= 1 else 0.0
+density_ratio = sp.simplify(sp.diff(measure_numerator, x) / sp.diff(measure_denominator, x))
+absolute_continuity_gap = sp.simplify(measure_numerator - sp.integrate(
+    density_ratio * sp.diff(measure_denominator, x), (x, lower, upper)))
+```
 
-    def numeric_conv(t, dx=0.001):
-        """直接数值卷积"""
-        # h(t) = ∫ χ(s)χ(t-s) ds, 积分区间取 [t-1, t] ∩ [0,1]
-        a = max(0, t - 1)
-        b = min(1, t)
-        if a >= b:
-            return 0.0
-        n = int((b - a) / dx)
-        if n == 0:
-            return 0.0
-        s = 0.0
-        for i in range(n):
-            s_val = a + (i + 0.5) * dx
-            if 0 <= s_val <= 1 and 0 <= (t - s_val) <= 1:
-                s += 1.0
-        return s * dx * 1.0  # box(s)=1, box(t-s)=1
+## Python 代码片段：模块21 竞赛拓展——可积性判定与反例
+```python
+import sympy as sp
 
-    for t in [0.0, 0.5, 1.0, 1.5, 2.0]:
-        numeric = numeric_conv(t)
-        analytic = conv_triangle(t)
-        print(f"    t={t:.1f}: 数值={numeric:.4f}, 解析={analytic:.4f}")
-
-
-# ============================================================
-# 题 19: 测度构造 / 绝对连续
-# ============================================================
-def verify_19():
-    print_header(19, "测度构造 / 绝对连续")
-    from sympy import integrate, Symbol
-    x = Symbol('x')
-    mu_val = float(integrate(x, (x, 0, 1)))
-    check("μ([0,1]) = ∫₀¹ x dx", mu_val, 0.5)
-    check("dμ/dm = x (从定义读取)", True, True)
-    check("μ(C) = 0 (m(C)=0 且 μ≪m)", True, True)
-    print("  [说明] μ(E)=∫_E x dm ⇒ dμ/dm=x, μ([0,1])=0.5, μ(C)=0。")
-
-
-# ============================================================
-# 主程序
-# ============================================================
-if __name__ == "__main__":
-    print("=" * 60)
-    print("  测度积分 — 全20道习题验证")
-    print("=" * 60)
-
-    total = 0
-    passed = 0
-
-    # 收集所有验证函数
-    verifiers = [
-        verify_0, verify_1, verify_2, verify_3, verify_4,
-        verify_5, verify_6, verify_7, verify_8, verify_9,
-        verify_10, verify_11, verify_12, verify_13, verify_14,
-        verify_15, verify_16, verify_17, verify_18, verify_19
-    ]
-
-    # 用于统计 check 通行率
-    original_check = check
-    check_results = []
-
-    # 重新包装 check 函数以便统计
-    import builtins
-    def tracking_check(label, computed, expected, rel_tol=1e-9, abs_tol=1e-9):
-        if isinstance(expected, (int, float)) and isinstance(computed, (int, float)):
-            ok = math.isclose(computed, expected, rel_tol=rel_tol, abs_tol=abs_tol)
-        else:
-            ok = computed == expected
-        status = "验证通过" if ok else "验证不通过"
-        print(f"  [{status}] {label}: computed={computed}, expected={expected}")
-        check_results.append(ok)
-        return ok
-
-    import __main__
-    __main__.check = tracking_check
-
-    for i, v in enumerate(verifiers):
-        v()
-    print(f"\n{'='*60}")
-    print(f"  总计检查项: {len(check_results)}, 通过: {sum(check_results)}, "
-          f"不通过: {len(check_results) - sum(check_results)}")
-    print(f"  通过率: {sum(check_results)/len(check_results)*100:.1f}%" if check_results else "  无检查项")
-    print(f"{'='*60}")
+near_zero_order = sp.limit(sp.log(abs(function)) / sp.log(x), x, 0, dir="+")
+tail_order = sp.limit(sp.log(abs(function)) / sp.log(x), x, sp.oo)
+absolute_integral = sp.integrate(sp.Abs(function), (x, lower, upper))
+```
+'''

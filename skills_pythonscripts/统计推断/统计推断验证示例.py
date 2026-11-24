@@ -1,461 +1,247 @@
-# -*- coding: utf-8 -*-
-"""
-统计推断 -- 20道习题 Python 验证脚本
-依赖: pip install numpy scipy
-运行: PYTHONIOENCODING=utf-8 python 统计推断验证示例.py
-"""
+r'''
+# 统计推断：验证提示词与知识点索引
+运行环境：conda activate Competition
+文件性质：这是提示词式的统计验证资料，包含可摘取的 Python/SymPy 片段，不是可直接运行的完整数据分析或随机模拟程序。
 
-import numpy as np
-from scipy import stats
-import math
+## 使用规则
+- 先记录样本模型、参数化、样本量、独立性、显著性水平和题面定义；不得补造样本、方差或分布。
+- OLS、异方差、计量经济学和回归诊断转线性回归；Markov/Poisson 等动态模型转随机过程；单纯概率计算转概率论。
+- 最终答复保留统计量、自由度、临界值或 p 值、区间双端点和实际语义结论。
 
-passed = 0
-failed = 0
-total = 20
+## 知识点 1：估计
+- 矩估计和最大似然从样本分布出发；极值点要检查参数空间和端点。
+- 无偏性、相合性和有效性是不同性质；Cramer--Rao 下界要求正则性条件和 Fisher 信息。
+- MSE 为方差加偏差平方，比较估计量时不能只看无偏性。
 
-print("=" * 70)
-print("统计推断 20道习题验证")
-print("=" * 70)
+## 知识点 2：置信区间
+- 正态总体均值根据总体方差已知/未知选择 $z$ 或 $t$ 分布；方差区间用 $\chi^2$ 分布并注意分位点倒置。
+- 最终答案必须写成 $[L,U]$，包括自由度和置信水平；不能只给误差界或单端点。
 
-# ============================================================
-# 模块1: 矩估计 (idx 0)
-# ============================================================
-print("\n" + "=" * 70)
-print("模块1: 矩估计 -- idx 0")
-print("=" * 70)
-print("\n[Idx 0] 泊松分布 P(lambda) 的矩估计")
-print("  总体矩 E(X) = lambda, 样本矩 = X_bar")
-print("  矩估计量: lambda_hat = X_bar")
-print("  [PASS] 通过")
-passed += 1
+## 知识点 3：假设检验与功效
+- 写出 $H_0,H_1$、检验统计量、拒绝域或 p 值、临界值比较和“拒绝/不拒绝 $H_0$”的题意结论。
+- 单侧/双侧方向由备择假设决定；第二类错误 $\beta$ 和功效 $1-\beta$ 不可互换。
+- $z,t,\chi^2,F$ 检验均须核对分布假设和自由度。
 
-# ============================================================
-# 模块2: MLE离散型 (idx 1)
-# ============================================================
-print("\n" + "=" * 70)
-print("模块2: MLE离散型 -- idx 1")
-print("=" * 70)
-print("\n[Idx 1] 伯努利分布 B(1,p) 的 MLE")
-# 数值验证: 模拟数据
-np.random.seed(42)
-n = 100
-p_true = 0.6
-sample = np.random.binomial(1, p_true, n)
-mle_p = np.mean(sample)
-print(f"  模拟数据 n=100, p_true=0.6, MLE p_hat={mle_p:.4f}")
-print(f"  期望 p_hat = X_bar = {mle_p:.4f}")
-print("  [PASS] 通过 -- MLE = X_bar = 样本均值")
-passed += 1
+## 知识点 4：拟合、方差分析与描述统计
+- 卡方拟合优度要检查期望频数、自由度和合并组规则；ANOVA 写出平方和、自由度、均方和 $F$ 值。
+- 似然比检验说明嵌套模型及渐近分布条件。
+- 直方图适用于单变量分布，散点图需要两个变量，时间数列需区分趋势、季节、循环与不规则变动。
+- 正态分布参数化先按题面区分标准差与方差；选项题按课程口径逐项核验。
 
-# ============================================================
-# 模块3: MLE连续型 (idx 2)
-# ============================================================
-print("\n" + "=" * 70)
-print("模块3: MLE连续型 -- idx 2")
-print("=" * 70)
-print("\n[Idx 2] 正态分布 N(mu, sigma^2) 的 MLE (sigma已知)")
-print("  似然函数最大化得 mu_hat = X_bar")
-print("  [PASS] 通过 -- MLE = 样本均值")
-passed += 1
+## Python 代码片段：似然、矩估计与参数约束
+```python
+import sympy as sp
 
-# ============================================================
-# 模块4: 无偏性判别 (idx 3)
-# ============================================================
-print("\n" + "=" * 70)
-print("模块4: 无偏性判别 -- idx 3")
-print("=" * 70)
-print("\n[Idx 3] 判断 mu_hat_1 = (X1 + 2X2 + X3)/4 的无偏性")
-print("  E(mu_hat_1) = (mu + 2*mu + mu)/4 = mu")
-print("  故 mu_hat_1 是 mu 的无偏估计")
-print("  [PASS] 通过")
-passed += 1
+theta = sp.symbols("theta", real=True)
+# likelihood 或 log_likelihood 必须由题面样本模型构造。
+score = sp.diff(log_likelihood, theta)
+critical_points = sp.solve(sp.Eq(score, 0), theta)
+second_derivative = sp.diff(log_likelihood, theta, 2)
+candidate_checks = {value: sp.simplify(second_derivative.subs(theta, value)) for value in critical_points}
+# 还需在文字中检查参数空间边界与可行性。
+```
 
-# ============================================================
-# 模块5: 相合性与无偏修正 (idx 4)
-# ============================================================
-print("\n" + "=" * 70)
-print("模块5: 相合性 -- idx 4")
-print("=" * 70)
-print("\n[Idx 4] U(0,theta)的极大次序统计量")
+## Python 代码片段：置信区间与检验统计量
+```python
+import sympy as sp
 
-# 数值模拟验证
-np.random.seed(123)
-true_theta = 5.0
-ns = [10, 30, 100, 500]
-for ni in ns:
-    samples = np.random.uniform(0, true_theta, ni)
-    max_val = np.max(samples)
-    unbiased = (ni + 1) / ni * max_val
-    print(f"  n={ni:3d}: X_(n)={max_val:.4f}, 无偏修正={unbiased:.4f} (真值={true_theta})")
+# xbar、sigma_or_s、n、critical_value 和 mu0 均来自题面。
+standard_error = sigma_or_s / sp.sqrt(n)
+confidence_interval = (sp.simplify(xbar - critical_value * standard_error),
+                       sp.simplify(xbar + critical_value * standard_error))
+test_statistic = sp.simplify((xbar - mu0) / standard_error)
+# 单侧/双侧拒绝域由 H1 决定，不能由该片段自动推断。
+```
 
-print("  结论: X_(n)偏低, (n+1)/n * X_(n) 无偏")
-print("  [PASS] 通过")
-passed += 1
+## Python 代码片段：卡方与 ANOVA 字段核验
+```python
+import sympy as sp
 
-# ============================================================
-# 模块6: Z区间 (idx 5)
-# ============================================================
-print("\n" + "=" * 70)
-print("模块6: Z置信区间 -- idx 5")
-print("=" * 70)
-print("\n[Idx 5] N(mu,9), n=16, x_bar=10.5, 95% CI")
-n5, sigma5, xbar5 = 16, 3, 10.5
-z025 = stats.norm.ppf(0.975)
-se5 = sigma5 / np.sqrt(n5)
-ci5 = (xbar5 - z025 * se5, xbar5 + z025 * se5)
-print(f"  z_0.025 = {z025:.4f}")
-print(f"  标准误 = {se5:.4f}")
-print(f"  计算CI = [{ci5[0]:.3f}, {ci5[1]:.3f}]")
-print(f"  期望CI = [9.03, 11.97]")
-if abs(ci5[0] - 9.03) < 0.01 and abs(ci5[1] - 11.97) < 0.01:
-    print("  [PASS] 通过")
-    passed += 1
-else:
-    print("  [FAIL] 失败")
-    failed += 1
+# observed、expected 和自由度均由题面给出。
+chi_square = sp.simplify(sum((obs - exp) ** 2 / exp for obs, exp in zip(observed, expected)))
+mean_square_between = sp.simplify(sum_squares_between / degrees_between)
+mean_square_within = sp.simplify(sum_squares_within / degrees_within)
+f_statistic = sp.simplify(mean_square_between / mean_square_within)
+```
 
-# ============================================================
-# 模块7: t区间 (idx 6)
-# ============================================================
-print("\n" + "=" * 70)
-print("模块7: t置信区间 -- idx 6")
-print("=" * 70)
-print("\n[Idx 6] N(mu,sigma^2), n=9, x_bar=5.2, s=1.5, 95% CI")
-n6, xbar6, s6 = 9, 5.2, 1.5
-t025_8 = stats.t.ppf(0.975, 8)
-se6 = s6 / np.sqrt(n6)
-ci6 = (xbar6 - t025_8 * se6, xbar6 + t025_8 * se6)
-print(f"  t_0.025(8) = {t025_8:.4f}")
-print(f"  标准误 = {se6:.4f}")
-print(f"  计算CI = [{ci6[0]:.3f}, {ci6[1]:.3f}]")
-print(f"  期望CI = [4.047, 6.353]")
-if abs(ci6[0] - 4.047) < 0.01 and abs(ci6[1] - 6.353) < 0.01:
-    print("  [PASS] 通过")
-    passed += 1
-else:
-    print("  [FAIL] 失败")
-    failed += 1
+## 输出契约
+- 统计结论必须完整且可审计，不能只输出一个 p 值或检验统计量。
+- 缺失样本或模型参数时，给出符号表达式或指出缺失字段。
+- 代码片段只计算由题面指定的统计量；必须另行报告自由度、临界值/p 值、拒绝结论和实际问题解释。
 
-# ============================================================
-# 模块8: 方差CI (idx 7)
-# ============================================================
-print("\n" + "=" * 70)
-print("模块8: chi2置信区间 -- idx 7")
-print("=" * 70)
-print("\n[Idx 7] n=10, s^2=4.5, 95% CI for sigma^2")
-n7, s2_7 = 10, 4.5
-chi2_lower = stats.chi2.ppf(0.975, n7 - 1)  # 19.023
-chi2_upper = stats.chi2.ppf(0.025, n7 - 1)  # 2.700
-ci7_lower = (n7 - 1) * s2_7 / chi2_lower
-ci7_upper = (n7 - 1) * s2_7 / chi2_upper
-print(f"  chi2_0.025(9) = {chi2_lower:.3f}")
-print(f"  chi2_0.975(9) = {chi2_upper:.3f}")
-print(f"  计算CI = [{ci7_lower:.3f}, {ci7_upper:.3f}]")
-print(f"  期望CI = [2.129, 15.000]")
-if abs(ci7_lower - 2.129) < 0.01 and abs(ci7_upper - 15.000) < 0.01:
-    print("  [PASS] 通过")
-    passed += 1
-else:
-    print("  [FAIL] 失败")
-    failed += 1
+## 模块级验证代码（与统计推断 skill 的 20 个模块对应）
 
-# ============================================================
-# 模块9: 双总体均值差CI (idx 8)
-# ============================================================
-print("\n" + "=" * 70)
-print("模块9: 双总体均值差CI -- idx 8")
-print("=" * 70)
-print("\n[Idx 8] n1=10,n2=12, x1=8.5,x2=7.0, sigma1=sigma2=2, 95% CI")
-n1_8, n2_8 = 10, 12
-x1_8, x2_8 = 8.5, 7.0
-sigma_8 = 2
-se8 = sigma_8 * np.sqrt(1/n1_8 + 1/n2_8)
-ci8 = (x1_8 - x2_8 - z025 * se8, x1_8 - x2_8 + z025 * se8)
-print(f"  标准误 = {se8:.4f}")
-print(f"  计算CI = [{ci8[0]:.3f}, {ci8[1]:.3f}]")
-print(f"  期望CI = [-0.178, 3.178]")
-if abs(ci8[0] - (-0.178)) < 0.015 and abs(ci8[1] - 3.178) < 0.015:
-    print("  [PASS] 通过")
-    passed += 1
-else:
-    print("  [FAIL] 失败")
-    failed += 1
+## Python 代码片段：模块1 矩估计
+```python
+import sympy as sp
 
-# ============================================================
-# 模块10: Z检验 (idx 9)
-# ============================================================
-print("\n" + "=" * 70)
-print("模块10: Z检验 -- idx 9")
-print("=" * 70)
-print("\n[Idx 9] H0: mu=500, n=25, x_bar=498, sigma=2, alpha=0.05")
-n9, xbar9, mu0_9, sigma9 = 25, 498, 500, 2
-z9 = (xbar9 - mu0_9) / (sigma9 / np.sqrt(n9))
-p9 = 2 * (1 - stats.norm.cdf(abs(z9)))
-print(f"  z = {z9:.3f}")
-print(f"  p-value = {p9:.6f}")
-print(f"  |z| = {abs(z9):.1f} > 1.96, 拒绝H0")
-if abs(z9 + 5) < 0.01:
-    print("  [PASS] 通过")
-    passed += 1
-else:
-    print("  [FAIL] 失败")
-    failed += 1
+theta = sp.symbols("theta", real=True)
+moment_equation = sp.Eq(sample_moment, theoretical_moment(theta))
+moment_estimate = sp.solve(moment_equation, theta)
+```
 
-# ============================================================
-# 模块11: t检验 (idx 10)
-# ============================================================
-print("\n" + "=" * 70)
-print("模块11: t检验 -- idx 10")
-print("=" * 70)
-print("\n[Idx 10] H0: mu=20, n=8, x_bar=19.2, s=1.1, alpha=0.05 (左侧)")
-n10, xbar10, mu0_10, s10 = 8, 19.2, 20, 1.1
-t10 = (xbar10 - mu0_10) / (s10 / np.sqrt(n10))
-t_crit_10 = stats.t.ppf(0.05, 7)
-print(f"  t = {t10:.3f}")
-print(f"  t_0.05(7) = {t_crit_10:.3f}")
-print(f"  t = {t10:.3f} < {t_crit_10:.3f}, 拒绝H0")
-if abs(t10 + 2.057) < 0.01:
-    print("  [PASS] 通过")
-    passed += 1
-else:
-    print("  [FAIL] 失败")
-    failed += 1
+## Python 代码片段：模块2 离散型极大似然估计
+```python
+import sympy as sp
 
-# ============================================================
-# 模块12: 卡方检验 (idx 11)
-# ============================================================
-print("\n" + "=" * 70)
-print("模块12: chi2检验 -- idx 11")
-print("=" * 70)
-print("\n[Idx 11] H0: sigma^2=0.01, n=16, s^2=0.015, alpha=0.05 (右侧)")
-n11, s2_11, sigma0_2_11 = 16, 0.015, 0.01
-chi2_11 = (n11 - 1) * s2_11 / sigma0_2_11
-chi2_crit_11 = stats.chi2.ppf(0.95, 15)
-print(f"  chi2 = {chi2_11:.1f}")
-print(f"  chi2_0.05(15) = {chi2_crit_11:.3f}")
-print(f"  chi2 = {chi2_11:.1f} < {chi2_crit_11:.3f}, 不拒绝H0")
-if abs(chi2_11 - 22.5) < 0.01:
-    print("  [PASS] 通过")
-    passed += 1
-else:
-    print("  [FAIL] 失败")
-    failed += 1
+theta = sp.symbols("theta", real=True)
+log_likelihood = sp.simplify(sum(sp.log(pmf(value, theta)) for value in sample))
+discrete_mle = sp.solve(sp.Eq(sp.diff(log_likelihood, theta), 0), theta)
+```
 
-# ============================================================
-# 模块13: F检验 (idx 12)
-# ============================================================
-print("\n" + "=" * 70)
-print("模块13: F检验 -- idx 12")
-print("=" * 70)
-print("\n[Idx 12] H0: sigma_A^2=sigma_B^2, sA^2=0.25,sB^2=0.64, nA=10,nB=13")
-s2A, s2B = 0.25, 0.64
-nA, nB = 10, 13
-F12 = s2A / s2B
-F_lower = stats.f.ppf(0.025, nA - 1, nB - 1)
-F_upper = stats.f.ppf(0.975, nA - 1, nB - 1)
-print(f"  F = sA^2/sB^2 = {F12:.4f}")
-print(f"  F_0.975(9,12) = {F_lower:.4f}")
-print(f"  F_0.025(9,12) = {F_upper:.4f}")
-print(f"  {F_lower:.4f} < {F12:.4f} < {F_upper:.4f}, 不拒绝H0")
-if abs(F12 - 0.3906) < 0.001:
-    print("  [PASS] 通过")
-    passed += 1
-else:
-    print("  [FAIL] 失败")
-    failed += 1
+## Python 代码片段：模块3 连续型极大似然估计
+```python
+import sympy as sp
 
-# ============================================================
-# 模块14: 双总体均值差t检验 (idx 13)
-# ============================================================
-print("\n" + "=" * 70)
-print("模块14: 双总体均值差t检验 -- idx 13")
-print("=" * 70)
-print("\n[Idx 13] 两饲料比较, nA=nB=10, xA=25.3,xB=22.8, sA=2.1,sB=2.4")
-nA13, nB13 = 10, 10
-xA13, xB13 = 25.3, 22.8
-sA13, sB13 = 2.1, 2.4
-sp2 = ((nA13 - 1) * sA13**2 + (nB13 - 1) * sB13**2) / (nA13 + nB13 - 2)
-t13 = (xA13 - xB13) / np.sqrt(sp2 * (1/nA13 + 1/nB13))
-t_crit_13 = stats.t.ppf(0.975, nA13 + nB13 - 2)
-print(f"  合并方差 sp^2 = {sp2:.3f}")
-print(f"  t = {t13:.3f}")
-print(f"  t_0.025(18) = {t_crit_13:.3f}")
-print(f"  t = {t13:.3f} > {t_crit_13:.3f}, 拒绝H0")
-if abs(sp2 - 5.085) < 0.01 and abs(t13 - 2.479) < 0.01:
-    print("  [PASS] 通过")
-    passed += 1
-else:
-    print("  [FAIL] 失败")
-    failed += 1
+theta = sp.symbols("theta", positive=True)
+log_likelihood = sp.simplify(sum(sp.log(density(value, theta)) for value in sample))
+score = sp.diff(log_likelihood, theta)
+continuous_mle = sp.solve(sp.Eq(score, 0), theta)
+```
 
-# ============================================================
-# 模块15: CR下界 (idx 14)
-# ============================================================
-print("\n" + "=" * 70)
-print("模块15: CR下界与有效估计 -- idx 14")
-print("=" * 70)
-print("\n[Idx 14] X~N(mu,1), 比较 mu_hat_1=X_bar 和 mu_hat_2=X_1")
-print("  Var(X_bar) = 1/n, Var(X_1) = 1")
-print("  n>1时 X_bar 更有效")
-print("  Fisher信息 I(mu) = n, CR下界 = 1/n = Var(X_bar)")
-print("  X_bar 达到CR下界, 是有效估计")
-print("  [PASS] 通过")
-passed += 1
+## Python 代码片段：模块4 无偏性判别
+```python
+import sympy as sp
 
-# ============================================================
-# 模块16: MSE比较 (idx 15)
-# ============================================================
-print("\n" + "=" * 70)
-print("模块16: MSE比较 -- idx 15")
-print("=" * 70)
-print("\n[Idx 15] X~N(0,sigma^2), 比较 sigma2_hat_1 和 sigma2_hat_2")
+estimator_expectation = sp.simplify(expectation_of_estimator)
+unbiased_gap = sp.simplify(estimator_expectation - parameter)
+```
 
-# 数值比较
-sigma_true = 1.0
-n_vals = [5, 10, 20, 50]
-print("  n    MSE(hat1)   MSE(hat2)")
-for ni in n_vals:
-    mse1 = 2 * sigma_true**4 / ni  # Var only (unbiased)
-    bias2 = sigma_true**2 / (ni + 1)
-    var2 = 2 * ni * sigma_true**4 / (ni + 1)**2
-    mse2 = var2 + bias2**2
-    print(f"  {ni:3d}  {mse1:.4f}       {mse2:.4f}")
-    if mse2 >= mse1:
-        print(f"       MSE2 >= MSE1? {mse2 >= mse1} (should be <)")
-        break
-else:
-    print("  MSE(hat2) < MSE(hat1) 对所有n成立")
+## Python 代码片段：模块5 相合性与无偏修正
+```python
+import sympy as sp
 
-print("  [PASS] 通过 -- hat2的MSE更小")
-passed += 1
+consistency_gap = sp.limit(estimator_n - parameter, n, sp.oo)
+finite_sample_bias = sp.simplify(expectation_estimator - parameter)
+unbiased_correction = sp.simplify(estimator - finite_sample_bias)
+```
 
-# ============================================================
-# 模块17: 两类错误 (idx 16)
-# ============================================================
-print("\n" + "=" * 70)
-print("模块17: 两类错误 -- idx 16")
-print("=" * 70)
-print("\n[Idx 16] H0:p=0.8, n=100, 治愈72人, 计算beta(p=0.7)")
+## Python 代码片段：模块6 正态均值置信区间（sigma 已知）
+```python
+import sympy as sp
 
-# 拒绝域: p_hat < 0.8 - 1.645 * sqrt(0.8*0.2/100) = 0.7342
-se_null = np.sqrt(0.8 * 0.2 / 100)
-reject_boundary = 0.8 - stats.norm.ppf(0.95) * se_null
-print(f"  拒绝域: p_hat < {reject_boundary:.4f}")
+standard_error = sigma / sp.sqrt(n)
+known_sigma_interval = (sp.simplify(xbar - z_quantile * standard_error),
+                        sp.simplify(xbar + z_quantile * standard_error))
+```
 
-# 当p=0.7时的beta
-se_alt = np.sqrt(0.7 * 0.3 / 100)
-beta16 = stats.norm.cdf((reject_boundary - 0.7) / se_alt)
-power16 = 1 - beta16
-print(f"  beta(p=0.7) = {beta16:.4f}")
-print(f"  功效 = {power16:.4f}")
-print(f"  期望 beta ≈ 0.773, 功效 ≈ 0.227")
+## Python 代码片段：模块7 正态均值置信区间（sigma 未知）
+```python
+import sympy as sp
 
-if abs(beta16 - 0.773) < 0.01 and abs(power16 - 0.227) < 0.01:
-    print("  [PASS] 通过")
-    passed += 1
-else:
-    print("  [PASS] 通过 (近似匹配)")
-    passed += 1
+standard_error_t = sample_standard_deviation / sp.sqrt(n)
+unknown_sigma_interval = (sp.simplify(xbar - t_quantile * standard_error_t),
+                          sp.simplify(xbar + t_quantile * standard_error_t))
+```
 
-# ============================================================
-# 模块18: 卡方拟合优度 (idx 17)
-# ============================================================
-print("\n" + "=" * 70)
-print("模块18: 卡方拟合优度 -- idx 17")
-print("=" * 70)
-print("\n[Idx 17] 骰子均匀性检验, n=120")
+## Python 代码片段：模块8 正态总体方差置信区间
+```python
+import sympy as sp
 
-observed = np.array([25, 17, 15, 23, 24, 16])
-expected = np.ones(6) * 20
-chi2_17 = np.sum((observed - expected)**2 / expected)
-chi2_crit_17 = stats.chi2.ppf(0.95, 5)
-p17 = 1 - stats.chi2.cdf(chi2_17, 5)
+chi_square_statistic = sp.simplify((n - 1) * sample_variance / sigma2)
+variance_interval = (sp.simplify((n - 1) * sample_variance / chi2_upper),
+                     sp.simplify((n - 1) * sample_variance / chi2_lower))
+```
 
-print(f"  观测频数: {observed}")
-print(f"  期望频数: {expected}")
-print(f"  chi2 = {chi2_17:.1f}")
-print(f"  chi2_0.05(5) = {chi2_crit_17:.3f}")
-print(f"  p-value = {p17:.4f}")
-print(f"  chi2 = {chi2_17:.1f} < {chi2_crit_17:.3f}, 不拒绝H0")
+## Python 代码片段：模块9 双总体均值差区间估计
+```python
+import sympy as sp
 
-if abs(chi2_17 - 5.0) < 0.01:
-    print("  [PASS] 通过")
-    passed += 1
-else:
-    print("  [FAIL] 失败")
-    failed += 1
+difference_se = sp.sqrt(sigma1 ** 2 / n1 + sigma2 ** 2 / n2)
+mean_difference_interval = (sp.simplify(xbar1 - xbar2 - critical * difference_se),
+                             sp.simplify(xbar1 - xbar2 + critical * difference_se))
+```
 
-# ============================================================
-# 模块19: 单因素方差分析 (idx 18)
-# ============================================================
-print("\n" + "=" * 70)
-print("模块19: 单因素方差分析 -- idx 18")
-print("=" * 70)
-print("\n[Idx 18] 三种教学方法比较, 每组5人")
+## Python 代码片段：模块10 单总体均值 Z 检验
+```python
+import sympy as sp
 
-A = np.array([85., 90., 88., 92., 86.])
-B = np.array([78., 82., 80., 85., 81.])
-C = np.array([70., 75., 72., 68., 74.])
+z_statistic = sp.simplify((xbar - mu0) / (sigma / sp.sqrt(n)))
+z_rejection_gap = sp.simplify(abs(z_statistic) - z_critical)
+```
 
-mean_A, mean_B, mean_C = np.mean(A), np.mean(B), np.mean(C)
-grand_mean = np.mean(np.concatenate([A, B, C]))
+## Python 代码片段：模块11 单总体均值 t 检验
+```python
+import sympy as sp
 
-print(f"  组均值: A={mean_A:.1f}, B={mean_B:.1f}, C={mean_C:.1f}")
-print(f"  总均值: {grand_mean:.1f}")
+t_statistic = sp.simplify((xbar - mu0) / (sample_standard_deviation / sp.sqrt(n)))
+t_rejection_gap = sp.simplify(abs(t_statistic) - t_critical)
+```
 
-# SSA
-n_per_group = 5
-SSA = n_per_group * ((mean_A - grand_mean)**2 + (mean_B - grand_mean)**2 + (mean_C - grand_mean)**2)
-# SSE
-SSE = np.sum((A - mean_A)**2) + np.sum((B - mean_B)**2) + np.sum((C - mean_C)**2)
+## Python 代码片段：模块12 单总体方差 chi-square 检验
+```python
+import sympy as sp
 
-MSA = SSA / 2
-MSE = SSE / 12
-F18 = MSA / MSE
-F_crit_18 = stats.f.ppf(0.95, 2, 12)
-p18 = 1 - stats.f.cdf(F18, 2, 12)
+chi_statistic = sp.simplify((n - 1) * sample_variance / sigma02)
+chi_rejection_gap = sp.simplify(chi_statistic - chi_critical)
+```
 
-print(f"  SSA = {SSA:.1f}, SSE = {SSE:.1f}")
-print(f"  MSA = {MSA:.1f}, MSE = {MSE:.2f}")
-print(f"  F = {F18:.2f}")
-print(f"  F_0.05(2,12) = {F_crit_18:.3f}")
-print(f"  F = {F18:.2f} > {F_crit_18:.3f}, 拒绝H0")
+## Python 代码片段：模块13 双总体方差 F 检验
+```python
+import sympy as sp
 
-if abs(SSA - 677.2) < 0.5 and abs(SSE - 92.4) < 0.5:
-    print("  [PASS] 通过")
-    passed += 1
-else:
-    print("  [PASS] 通过 (四舍五入略有差异)")
-    passed += 1
+f_statistic = sp.simplify(sample_variance_1 / sample_variance_2)
+f_reciprocal_gap = sp.simplify(f_statistic * sample_variance_2 / sample_variance_1 - 1)
+```
 
-# ============================================================
-# 模块20: 似然比检验 (idx 19)
-# ============================================================
-print("\n" + "=" * 70)
-print("模块20: 似然比检验 -- idx 19")
-print("=" * 70)
-print("\n[Idx 19] X~N(mu,sigma^2), H0:mu=mu0, 似然比等价于t检验")
-print("  似然比: lambda = (sigma_hat^2/sigma_hat_0^2)^(n/2)")
-print("  lambda^(2/n) = (1 + t^2/(n-1))^(-1)")
-print("  拒绝域 lambda < c 等价于 |t| > c'")
-print("  即似然比检验等价于双侧t检验")
-print("  [PASS] 通过")
-passed += 1
+## Python 代码片段：模块14 双总体均值差假设检验
+```python
+import sympy as sp
 
-# ============================================================
-# 汇总
-# ============================================================
-print("\n" + "=" * 70)
-print("验证汇总")
-print("=" * 70)
-print(f"  总题数：{total}")
-print(f"  通过：{passed} [PASS]")
-print(f"  失败：{failed} [FAIL]")
-print(f"  通过率：{passed/total*100:.1f}%")
+pooled_variance = sp.simplify(((n1 - 1) * variance1 + (n2 - 1) * variance2) /
+                              (n1 + n2 - 2))
+pooled_t = sp.simplify((xbar1 - xbar2 - null_difference) /
+                       sp.sqrt(pooled_variance * (1 / n1 + 1 / n2)))
+```
 
-if failed == 0:
-    print("\n  *** 全部20道题验证通过！")
-else:
-    print(f"\n  WARNING 有 {failed} 道题验证失败，需要检查。")
+## Python 代码片段：模块15 Cramer--Rao 下界与有效估计
+```python
+import sympy as sp
 
-print("=" * 70)
+fisher_information = sp.simplify(-sp.diff(log_likelihood, theta, 2))
+cr_lower_bound = sp.simplify(1 / fisher_information)
+efficiency_gap = sp.simplify(estimator_variance - cr_lower_bound)
+```
+
+## Python 代码片段：模块16 MSE 与偏倚-方差权衡
+```python
+import sympy as sp
+
+mse = sp.simplify(estimator_variance + bias ** 2)
+comparison_gap = sp.simplify(mse_a - mse_b)
+```
+
+## Python 代码片段：模块17 两类错误与检验功效
+```python
+import sympy as sp
+
+power = sp.simplify(1 - beta_error)
+error_sum_check = sp.simplify(alpha_error + beta_error)
+```
+
+## Python 代码片段：模块18 chi-square 拟合优度检验
+```python
+import sympy as sp
+
+chi_square = sp.simplify(sum((observed_i - expected_i) ** 2 / expected_i
+                             for observed_i, expected_i in zip(observed, expected)))
+degrees_of_freedom = category_count - 1 - estimated_parameter_count
+```
+
+## Python 代码片段：模块19 单因素方差分析
+```python
+import sympy as sp
+
+mean_square_between = sp.simplify(sum_squares_between / degrees_between)
+mean_square_within = sp.simplify(sum_squares_within / degrees_within)
+anova_f = sp.simplify(mean_square_between / mean_square_within)
+```
+
+## Python 代码片段：模块20 似然比检验
+```python
+import sympy as sp
+
+likelihood_ratio = sp.simplify(2 * (log_likelihood_full - log_likelihood_null))
+asymptotic_gap = sp.simplify(likelihood_ratio - chi_square_critical)
+```
+'''

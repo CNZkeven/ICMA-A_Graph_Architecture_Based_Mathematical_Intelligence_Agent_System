@@ -1,0 +1,5 @@
+# Adapter-only dependencies when the ICMA solver is already installed.
+# The root requirements.txt includes this file plus solver and test dependencies.
+fastapi>=0.115.0,<1.0.0
+uvicorn>=0.30.0,<1.0.0
+pydantic>=2.8.0,<3.0.0

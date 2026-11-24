@@ -14,20 +14,29 @@ from typing import Optional
 
 
 def _extract_answer_from_output(stdout: str) -> Optional[str]:
+    """Answer text after the mandated 最终答案 marker, or None.
+
+    Returning None when the marker is absent is deliberate. The Python prompt requires
+    the program to end with `print("最终答案:", answer)`, so a missing marker means the
+    program never reached its own conclusion — usually because generation was truncated
+    mid-file. The previous fallback promoted the *last stdout line* instead, and on the
+    ISL-style problem of 2026-07-29 that turned a mid-computation log line
+    ("k=6: gcd of b^(2^k)-1 for odd b up to 49 is 256 = 2^8") into a candidate answer
+    that then competed in arbitration. An unfinished program has verified nothing, and
+    saying so lets the caller retry instead of scoring a log line.
+    """
     if not stdout:
         return None
     # 取最后一个"最终答案:"标记到 stdout 末尾的全部内容——SymPy Matrix/子群列表等
     # 多行输出必须完整保留（单行截断曾导致 final_response 只剩 "(Matrix([" 碎片）。
     markers = list(re.finditer(r"最终答案[：:][ \t]*", stdout))
-    if markers:
-        answer = stdout[markers[-1].end():].strip()
-        # 容错解码（errors="replace"）在截断处产生的 U+FFFD 只可能是残缺垃圾，
-        # 从首尾剥掉，避免污染答案匹配。
-        answer = answer.strip("�").strip()
-        return answer if answer else None
-    lines = [line.strip().strip("�").strip() for line in stdout.split("\n") if line.strip()]
-    lines = [line for line in lines if line]
-    return lines[-1] if lines else None
+    if not markers:
+        return None
+    answer = stdout[markers[-1].end():].strip()
+    # 容错解码（errors="replace"）在截断处产生的 U+FFFD 只可能是残缺垃圾，
+    # 从首尾剥掉，避免污染答案匹配。
+    answer = answer.strip("�").strip()
+    return answer if answer else None
 
 
 def execute_python(code: str, timeout: int = 30) -> dict:

@@ -5,15 +5,22 @@ description: Use when verifying complex analysis problems with sympy — complex
 
 # 复分析解题与验证技能手册
 
+## 领域边界与路由约定
+
+- 适用范围：全纯函数、Cauchy–Riemann 方程、复积分、Laurent 展开、留数和保形映射。
+- 不接管：虚二次域的整数范数题若无复解析条件转离散数学；实变量 Fourier 变换转数学分析。
+- 验证契约：先确认解析域、孤立奇点和路径方向，再检查留数、绕数及积分定向，不能把形式级数当收敛展开。
+
 ## 概述
 
-本技能手册覆盖本科复分析课程的核心知识体系，包括复数运算与de Moivre公式、解析函数与Cauchy-Riemann方程、Cauchy积分理论与高阶导数公式、Laurent级数与收敛半径、留数定理与围道积分、保形映射（Möbius变换）、零点与极点理论（辐角原理、Rouché定理）、以及调和函数等经典内容。全手册以20道精选习题为骨架，系统梳理每个知识模块的核心概念、常用定理、解题步骤和常见陷阱，并配套sympy验证方法，适用于复分析课程的学习、复习与自动解题验证。
+本技能手册覆盖本科复分析课程的核心知识体系，包括复数运算与de Moivre公式、解析函数与Cauchy-Riemann方程、Cauchy积分理论与高阶导数公式、Laurent级数与收敛半径、留数定理与围道积分、保形映射（Möbius变换）、零点与极点理论（辐角原理、Rouché定理）、以及调和函数等经典内容。全手册以20道精选习题为骨架，系统梳理每个知识模块的核心概念、常用定理、解题步骤和常见陷阱，并配套验证知识提示，适用于复分析课程的学习、复习与自动解题验证。
 
 ---
 
 ## 知识点体系
 
 ### 模块1：复数运算与de Moivre公式
+- 检索词：复数 complex 复数运算 moivre 高次幂 幂次 power exponent 极坐标 polar
 
 #### 核心概念
 
@@ -50,6 +57,7 @@ description: Use when verifying complex analysis problems with sympy — complex
 ---
 
 ### 模块2：解析函数与Cauchy-Riemann方程
+- 检索词：解析 analytic holomorphic 全纯 cauchy-riemann 调和 harmonic 可微 differentiable 共轭 conjugate
 
 #### 核心概念
 
@@ -97,6 +105,7 @@ description: Use when verifying complex analysis problems with sympy — complex
 ---
 
 ### 模块3：Cauchy积分理论
+- 检索词：cauchy 积分 integral 围道 contour 环路 closed curve 曲线 路径 path
 
 #### 核心概念
 
@@ -138,6 +147,7 @@ description: Use when verifying complex analysis problems with sympy — complex
 ---
 
 ### 模块4：级数展开
+- 检索词：级数 series 收敛半径 radius 收敛 convergence taylor laurent 展开 expansion 幂级数 power
 
 #### 核心概念
 
@@ -184,6 +194,7 @@ description: Use when verifying complex analysis problems with sympy — complex
 ---
 
 ### 模块5：留数理论
+- 检索词：留数 residue 极点 pole 本性奇点 singularity 奇点 无穷远 infinity
 
 #### 核心概念
 
@@ -225,6 +236,7 @@ description: Use when verifying complex analysis problems with sympy — complex
 ---
 
 ### 模块6：围道积分与实积分计算
+- 检索词：围道 contour 实积分 improper 反常积分 三角积分 trigonometric 有理函数 rational
 
 #### 核心概念
 
@@ -282,6 +294,7 @@ description: Use when verifying complex analysis problems with sympy — complex
 ---
 
 ### 模块7：保形映射
+- 检索词：保形 conformal 映射 mapping 双线性 bilinear 单位圆 unit disk 上半平面 upper half
 
 #### 核心概念
 
@@ -321,6 +334,7 @@ description: Use when verifying complex analysis problems with sympy — complex
 ---
 
 ### 模块8：零点与极点理论
+- 检索词：零点 zero 极点 pole 辐角 argument 原理 principle 有理型 meromorphic
 
 #### 核心概念
 
@@ -377,6 +391,7 @@ description: Use when verifying complex analysis problems with sympy — complex
 ---
 
 ### 模块9：经典定理
+- 检索词：liouville 最大模 maximum modulus 代数基本定理 fundamental 辐角原理 rouche 解析延拓 continuation
 
 #### Liouville定理
 
@@ -429,7 +444,7 @@ $$\frac{1}{2\pi i} \oint_C \frac{f'(z)}{f(z)}\,dz = N - P$$
 
 ---
 
-## 通用解题方法论
+## 模块速查：通用解题方法论
 
 ### 1. 题型识别
 
@@ -486,11 +501,11 @@ $$\frac{1}{2\pi i} \oint_C \frac{f'(z)}{f(z)}\,dz = N - P$$
 
 ---
 
-## sympy验证技巧
+## 模块速查：sympy验证技巧
 
-本节给出与配套验证脚本对应的 sympy 验证方法，覆盖复数运算、级数展开、留数计算和围道积分。
+本节给出可供 Python 生成阶段使用的 SymPy 核验思路，覆盖复数运算、级数展开、留数计算和围道积分；题面数据仍为唯一的数值来源。
 
-### 复数基础运算
+## 模块速查：sympy验证：复数基础运算
 
 ```python
 from sympy import I, re, im, Abs, arg, conjugate, expand, simplify
@@ -515,7 +530,7 @@ z_conj = conjugate(z)     # 3 - 4*I
 assert Abs(z)**2 == expand(z * conjugate(z))
 ```
 
-### de Moivre公式与复数的高次幂
+## 模块速查：sympy验证：de Moivre公式与复数的高次幂
 
 ```python
 from sympy import I, expand, sqrt, pi, cos, sin, simplify
@@ -548,7 +563,7 @@ theta_val = arg(z_expr)
 # 结果 = r^n * (cos(n*theta) + i*sin(n*theta))
 ```
 
-### Cauchy-Riemann方程验证
+## 模块速查：sympy验证：Cauchy-Riemann方程验证
 
 ```python
 from sympy import I, symbols, diff, expand
@@ -586,7 +601,7 @@ uy_neg = -diff(u_harm, y)              # e^x sin y
 assert simplify(vx_check - uy_neg) == 0
 ```
 
-### Cauchy积分公式
+## 模块速查：sympy验证：Cauchy积分公式
 
 ```python
 from sympy import I, pi, exp, diff, symbols
@@ -616,7 +631,7 @@ def factorial_sympy(k):
 result_high = (2*pi*I / factorial_sympy(n)) * f_n_at_a
 ```
 
-### 级数展开与收敛半径
+## 模块速查：sympy验证：级数展开与收敛半径
 
 ```python
 from sympy import symbols, series, oo, limit_seq, summation
@@ -650,7 +665,7 @@ R = limit(a_n / a_np1, n, oo)  # 2
 # 或识别为几何级数 Σ (z/2)^n，收敛当 |z/2| < 1，即 |z| < 2
 ```
 
-### 留数计算
+## 模块速查：sympy验证：留数计算
 
 ```python
 from sympy import I, oo, limit, diff, symbols
@@ -684,7 +699,7 @@ def compute_residue(f, z0, order=1):
         return limit(dg, z, z0) / sp_fact(order - 1)
 ```
 
-### 实积分计算（留数定理）
+## 模块速查：sympy验证：实积分计算（留数定理）
 
 ```python
 from sympy import I, pi, oo, limit, diff, cos, sin, symbols, expand, simplify, factor
@@ -735,7 +750,7 @@ res_i = limit((z - I) * sp.exp(I*z) / (z**2 + 1), z, I)
 # 由偶对称性，∫_0^∞ = π/(2e)
 ```
 
-### 全参数化验证流程
+## 模块速查：sympy验证：全参数化验证流程
 
 ```python
 from sympy import I, pi, oo, limit, diff, cos, sin, symbols, expand, simplify, Abs, arg, integrate
@@ -775,7 +790,7 @@ assert R8 == 2
 
 ---
 
-## 习题索引
+## 模块速查：习题索引
 
 | idx | 题型 | 难度 | 主题 | 关键公式/定理 | 核心方法 | 验证方法 |
 |-----|------|------|------|-------------|---------|---------|
@@ -802,7 +817,7 @@ assert R8 == 2
 
 ---
 
-## 常见错误与陷阱
+## 模块速查：常见错误与陷阱
 
 ### 复数运算
 1. **辐角计算忽略象限**：$\arctan(b/a)$ 只给出 $(-\pi/2, \pi/2)$ 内的值。当 $a < 0$ 时辐角应为 $\arctan(b/a) + \pi$（或 $-\pi$），否则会差 $\pi$。例如 $\sqrt{3}+i$ 的辐角是 $\pi/6$，但 $-\sqrt{3}+i$ 的辐角是 $5\pi/6$ 而非 $\arctan(-1/\sqrt{3}) \approx -\pi/6$。
@@ -845,7 +860,7 @@ assert R8 == 2
 
 ---
 
-## 关键公式速查表
+## 模块速查：关键公式速查表
 
 ### 复数运算
 
@@ -916,7 +931,7 @@ assert R8 == 2
 
 ---
 
-## 计算题标准解法速查
+## 模块速查：计算题标准解法速查
 
 ### 类型A：复数高次幂（de Moivre公式）
 **步骤**：极坐标 $re^{i\theta}$ $\to$ $(re^{i\theta})^n = r^n e^{in\theta}$ $\to$ 化回代数形式
@@ -970,7 +985,7 @@ assert R8 == 2
 
 ---
 
-## 证明题标准策略速查
+## 模块速查：证明题标准策略速查
 
 ### 策略1：双方向极限法
 **适用**：C-R方程必要性（idx 14）
@@ -1004,9 +1019,85 @@ assert R8 == 2
 
 ---
 
-## 参考资源
+## 模块速查：参考资源
 
-- 配套 sympy 验证脚本：`test_complex_analysis.py`
+- 配套验证知识提示：`复分析验证示例.py`
 - 数据集来源：`复分析.md`（20题，涵盖全部核心知识点）
 - 推荐教材：《复变函数》（Ahlfors）、《Complex Analysis》（Stein-Shakarchi）、《复变函数与积分变换》
 - 在线工具：SymPy Live、SageMath、Wolfram Alpha
+
+---
+
+## 模块速查：虚二次域范数方程与复数表示
+
+### 核心概念
+
+设 $d > 0$ 为无平方因子正整数，虚二次域 $\mathbb{Q}(\sqrt{-d})$ 中的代数整数形如：
+$$z = a + b\sqrt{-d} = a + bi\sqrt{d} \quad (a, b \in \mathbb{Z})$$
+
+其**范数**定义为：
+$$N(z) = z \cdot \overline{z} = a^2 + d b^2$$
+
+范数是乘性的：$N(z_1 z_2) = N(z_1)N(z_2)$。
+
+### 范数方程与丢番图方程
+
+虚二次域的范数方程 $N(z) = n$ 等价于丢番图方程：
+$$a^2 + d b^2 = n$$
+
+其中 $a, b$ 为整数（若考虑代数整数环）或有理数（若考虑域本身）。
+
+**典型问题：** 给定 $n$ 和 $d$，求所有满足 $a^2 + d b^2 = n$ 的整数解 $(a, b)$。这在竞赛中以 Pell 型方程或二次型表示整数的形式出现。
+
+### 复数视角下的范数方程
+
+将虚二次域嵌入复平面：$\sqrt{-d} \leftrightarrow i\sqrt{d}$。则 $z = a + bi\sqrt{d}$ 是复平面上以 $\sqrt{d}$ 为虚轴缩放因子的格点：
+
+$$|z|^2 = a^2 + d b^2 = N(z)$$
+
+因此 $N(z) = n$ 表示复平面上格点 $z$ 到原点的距离平方为 $n$。
+
+**分解性质：** 若 $n = n_1 n_2$ 且 $n_1 = a_1^2 + d b_1^2$, $n_2 = a_2^2 + d b_2^2$，则 $n$ 也可表示为平方和：
+$$n = (a_1 a_2 - d b_1 b_2)^2 + d(a_1 b_2 + a_2 b_1)^2$$
+
+这对应于复数乘法的范数乘性：
+$$(a_1 + b_1 i\sqrt{d})(a_2 + b_2 i\sqrt{d}) = (a_1 a_2 - d b_1 b_2) + (a_1 b_2 + a_2 b_1)i\sqrt{d}$$
+
+### 竞赛常见题型
+
+1. **整数的平方和表示唯一性：** 在虚二次域中讨论 $a^2 + d b^2$ 表示的唯一性（与类数相关）
+2. **范数方程的整数解计数：** 利用虚二次域的整数环结构（特别是 $d=1,2,3$ 时为主理想环）分析解的存在性和个数
+3. **单位根与对称性：** 虚二次域的单位群（$\mathbb{Z}[\sqrt{-d}]$ 的单位）限制为 $\pm 1$（$d \ge 2$ 时），仅在 $d=1$（Gauss整数）和 $d=3$（Eisenstein整数）时有额外单位根，这影响了解的分类
+
+### 易错点
+
+- **混淆范数与模**：$N(a+b\sqrt{-d}) = a^2 + d b^2$，而 $|a+b\sqrt{-d}| = \sqrt{a^2 + d b^2} = \sqrt{N(z)}$。范数是模的平方
+- **$d=1$ 的特殊性**：Gauss整数环 $\mathbb{Z}[i]$ 的范数为 $a^2 + b^2$，与通常复数模平方一致。对于 $d > 1$，范数中的系数 $d$ 使格点沿虚轴拉伸
+- **分解不唯一**：在类数大于1的虚二次域中，代数整数环不是 UFD，范数方程的求解需要更细致的分析
+
+### 应试解题技巧
+
+- 判断 $n$ 能否表示为 $a^2 + d b^2$：先检查模 $p$ 条件（二次剩余），再利用复数乘法的范数乘性进行分解
+- 利用复数共轭的范数等式快速验证解的合法性：$N(z_1 z_2) = N(z_1)N(z_2)$ 可用于约化高次范数方程
+## 模块速查：解法直达·$|\sin z|$ 在 $z=\cos\theta+i\sin\theta$ 处的值
+- 检索词：复正弦 模 双曲函数 cosh sinh 复变函数
+- 命中条件：|\sin(z)|
+**推理过程**：
+1. 记 $x=\cos\theta,\ y=\sin\theta$，则 $z=x+iy$（注意 $|z|=1$ 这一题设只用来把参数写成三角函数，不影响下面的代数）。
+2. 展开复正弦的实虚部：$\sin(x+iy)=\sin x\cos(iy)+\cos x\sin(iy)=\sin x\cosh y+i\cos x\sinh y$（用了 $\cos iy=\cosh y$、$\sin iy=i\sinh y$）。
+3. 取模的平方：$|\sin z|^2=\sin^2x\cosh^2y+\cos^2x\sinh^2y$。
+4. 用 $\cosh^2y=1+\sinh^2y$ 化简：$|\sin z|^2=\sin^2x+\sinh^2y$（交叉项恰好合并成一项）。
+5. 代回 $x=\cos\theta,\ y=\sin\theta$ 并取非负平方根：$|\sin z|=\sqrt{\sin^2(\cos\theta)+\sinh^2(\sin\theta)}$，即所求值。
+**自检**：化简只用了一步恒等式 $\cosh^2-\sinh^2=1$；取根号时注明非负（模的定义）；可代 $\theta=0$ 验证 $|\sin 1|$ 与公式 $\sqrt{\sin^2 1+0}$ 一致。
+
+## 模块速查：解法直达·有理函数乘指数核的围道积分（上半平面二阶极点）
+- 检索词：留数定理 围道积分 半圆路径 二阶极点 复积分
+- 命中条件：(x^2 + b^2)^2
+**推理过程**：
+1. 选择围道：$a>0$ 时被积函数的振荡因子 $e^{iaz}$ 在上半平面满足 $|e^{iaz}|=e^{-a\,\mathrm{Im}\,z}\le1$（Jordan 引理条件），取实轴 $[-R,R]$ 加上半平面大半圆 $C_R$；先验证 $C_R$ 上积分随 $R\to\infty$ 趋于 $0$（被积函数 $\sim R^{-4}$、弧长 $\sim R$）。
+2. 找奇点：分母 $(z^2+b^2)^2=(z-ib)^2(z+ib)^2$，上半平面只有二阶极点 $z=ib$。
+3. 算留数（二阶极点用导数公式）：$\mathrm{Res}_{z=ib}\frac{e^{iaz}}{(z^2+b^2)^2}=\frac{d}{dz}\frac{e^{iaz}}{(z+ib)^2}\Big|_{z=ib}$。先算导数：$\frac{d}{dz}\big[e^{iaz}(z+ib)^{-2}\big]=e^{iaz}\big[ia(z+ib)^{-2}-2(z+ib)^{-3}\big]$；代入 $z=ib$（用 $(2ib)^2=-4b^2$、$(2ib)^3=-8ib^3$）得 $e^{-ab}\big[-\frac{ia}{4b^2}+\frac{1}{4ib^3}\big]=\frac{ie^{-ab}}{4b^2}\big[-a-\frac{1}{b}\big]=-\frac{i(1+ab)e^{-ab}}{4b^3}$。
+4. 留数定理：$I=2\pi i\cdot\mathrm{Res}_{z=ib}$ —— 把第 3 步的留数乘以 $2\pi i$ 即得积分值（最后一个机械乘法）。
+5. 积分路径的交代：实轴 $[-R,R]$ 加上半平面大半圆 $C_R$；第 1 步已验 $a>0$ 时弧上积分随 $R\to\infty$ 趋于 $0$，这正是配合留数定理的标准围道（作答时把路径一并写明）。
+**自检**：二阶极点的留数必须用导数公式（不能当作一阶极点直接代）；结果含因子 $(1+ab)$ 可作校验；回答时把“结果 + 积分路径选择”两件都写上。
+

@@ -1,616 +1,463 @@
-# pip install sympy numpy
-# -*- coding: utf-8 -*-
-"""
-离散数学 20 道习题全量验证脚本
-=======================
-每个知识点独立代码块，内置标准答案比对逻辑。
-运行后逐题打印「验证通过✓ / 验证不通过✗」。
-"""
+r'''
+# 离散数学：验证提示词与知识点索引
+运行环境：conda activate Competition
+文件性质：这是说明型提示资料，包含可摘取的 Python/SymPy 片段，不是可直接运行的完整枚举器或搜索程序。
 
-import math
-import itertools
+## 使用规则
+- 先明确有限对象、状态、边界和等价关系；计数题必须说明是否有序、是否允许重复以及对称性如何处理。
+- 本目录覆盖组合、图论、递推、生成函数、数论整除与组合博弈；纯欧氏几何转非基础及进阶课程，规划/调度转运筹学。
+- 小规模枚举只能用于发现规律，最终结论必须给递推、不变量、双计数或构造证明。
 
-# ============================================================
-# 辅助函数
-# ============================================================
+## 知识点 1：命题逻辑、集合与布尔代数
+- 使用真值表、等价变形、主析取/主合取范式时保持量词和否定范围。
+- 集合题通过并、交、补和容斥核对；布尔式化简后可用代入边界值检查等价性。
 
-def comb(n, k):
-    """组合数 C(n,k) 自主实现"""
-    if k < 0 or k > n:
-        return 0
-    return math.comb(n, k)
+## 知识点 2：组合计数
+- 加法、乘法、排列组合和容斥原理的前提分别是互斥、分步独立、顺序及重复限制。
+- 抽屉原理要指出抽屉和对象；递推计数写出初值与边界。
+- Burnside/Polya 或对称计数必须说明群作用和不动点数。
 
-def gcd_extended(a, b):
-    """扩展欧几里得算法：返回 (g, x, y) 满足 a*x + b*y = g = gcd(a,b)"""
+## 知识点 3：递推与生成函数
+- 线性递推的特征方程要结合初值确定常数；重根和共轭根分别处理。
+- 生成函数中系数提取、收敛形式与形式幂级数运算不可混淆。
+
+## 知识点 4：数论
+- 扩展 Euclid 给出 $ax+by=\gcd(a,b)$；同余除法先核对逆元或互素条件。
+- 中国剩余定理先检查模数互素性或兼容条件；整除、素数、取整和 Diophantine 方程逐项保留整数条件。
+
+## 知识点 5：图论、关系与博弈
+- 图论先规定简单图/多重图、有向性和顶点集；握手、Euler/Hamilton、树和着色结论要核对前提。
+- 等价关系检查自反、对称、传递；偏序另需反对称。
+- 组合博弈区分 P/N 态和终局规则，策略必须覆盖对手所有合法回应。
+
+## 知识点 6：竞赛拓展专题
+- 格点正六边形、直线覆盖、面积平分线和全等剖分题：写出坐标/仿射不变量、对称性和不重不漏依据。
+- 共线角度、多面体可见性和凸性题：保留射线顺序、外法向和非退化条件，不能由示意图直接断言。
+- 分拆共轭、拉丁方与组合设计题：检查大小守恒、行列排列和存在性上界。
+- 赛程排程题：每对对象恰出现一次、每轮可行且总成本/停留约束全部满足；有明确优化目标时转运筹学。
+- max-plus 闭包、平移不变全序和 rich 集题：先声明运算，再检查闭包、平移相容性和构造的双向条件。
+- 判别式丢番图、大数除法与数位整除题：检查判别式为平方、回代原方程、位数/进位以及模 $11$ 交错和等必要条件。
+
+## Python 代码片段：组合数、容斥与有限枚举
+```python
+from itertools import combinations
+from math import comb
+
+# n、k 和对象集合必须来自题面。
+binomial_value = comb(n, k)
+pair_subsets = list(combinations(objects, subset_size))
+
+# 容斥项由题面事件族给出；只对有限且可枚举情形使用。
+inclusion_exclusion_total = sum(
+    (-1) ** (len(index_set) + 1) * intersection_size(index_set)
+    for size in range(1, len(event_indices) + 1)
+    for index_set in combinations(event_indices, size)
+)
+```
+
+## Python 代码片段：递推、生成函数与系数提取
+```python
+import sympy as sp
+
+n = sp.symbols("n", integer=True, nonnegative=True)
+z = sp.symbols("z")
+# recurrence、initial_values 或 generating_function 均由题面给出。
+closed_form_candidates = sp.rsolve(recurrence, sp.Function("a")(n))
+coefficient_n = sp.expand(generating_function.series(z, 0, target_index + 1).removeO()).coeff(z, target_index)
+```
+
+## Python 代码片段：扩展 Euclid 与中国剩余定理
+```python
+from math import gcd
+
+def extended_gcd(a, b):
     if b == 0:
-        return (a, 1, 0)
-    g, x1, y1 = gcd_extended(b, a % b)
-    return (g, y1, x1 - (a // b) * y1)
-
-def check(title, computed, expected, success=True):
-    """统一结果输出"""
-    status = "PASS" if success else "FAIL"
-    print(f"  [{status}] {title}")
-    if not success:
-        print(f"        期望值: {expected}")
-        print(f"        计算值: {computed}")
-    return success
-
-# ============================================================
-# 1. 命题逻辑化简 (idx=0)
-# ============================================================
-print("=" * 60)
-print("【1】命题逻辑化简 (idx=0)")
-print("=" * 60)
-
-try:
-    import sympy
-    from sympy import symbols, simplify_logic, Or, And, Not
-
-    p, q = symbols('p q')
-    expr = And(Or(p, q), Or(p, Not(q)), Or(Not(p), q))
-    simplified = simplify_logic(expr, form='dnf')
-    expected_str = "p & q"
-    computed_str = str(simplified)
-    if computed_str in ("p & q", "p & (q)", "(p & q)", "And(p, q)"):
-        ok = True
-    else:
-        # 尝试逻辑等价验证
-        ok = simplify_logic(expr ^ And(p, q)) == False
-    check("(p|q)&(p|~q)&(~p|q) 化简为 p&q", str(simplified), "p & q", ok)
-except Exception as e:
-    print(f"  [FAIL] 命题逻辑化简 出错: {e}")
-
-print()
-
-# ============================================================
-# 2. 组合计数 (idx=1)
-# ============================================================
-print("=" * 60)
-print("【2】组合计数 (idx=1)")
-print("=" * 60)
-
-# 从 10 男 8 女选 5 人，至少 2 名女生
-# 分情况：2女3男 + 3女2男 + 4女1男 + 5女0男
-girls, boys = 8, 10
-computed_count = comb(girls, 2) * comb(boys, 3) + comb(girls, 3) * comb(boys, 2) + comb(girls, 4) * comb(boys, 1) + comb(girls, 5) * comb(boys, 0)
-expected_count = 6636
-check(f"选法总数 = {computed_count}", computed_count, expected_count, computed_count == expected_count)
-print()
-
-# ============================================================
-# 3. 集合运算 (idx=2)
-# ============================================================
-print("=" * 60)
-print("【3】集合运算 (idx=2)")
-print("=" * 60)
-
-U = set(range(1, 21))
-A = {x for x in U if all(x % i != 0 for i in range(2, int(x**0.5) + 1)) and x > 1}
-B = {x for x in U if x % 2 == 1}
-# 注意：1 不是素数
-A = {2, 3, 5, 7, 11, 13, 17, 19}  # 显式列出以与答案一致
-B = {1, 3, 5, 7, 9, 11, 13, 15, 17, 19}
-
-inter = A & B
-union = A | B
-check(f"|A∩B| = {len(inter)}", len(inter), 7, len(inter) == 7)
-check(f"|A∪B| = {len(union)}", len(union), 11, len(union) == 11)
-print()
-
-# ============================================================
-# 4. 扩展欧几里得算法 (idx=3)
-# ============================================================
-print("=" * 60)
-print("【4】扩展欧几里得算法 (idx=3)")
-print("=" * 60)
-
-g, x, y = gcd_extended(2021, 1984)
-verify_val = 2021 * x + 1984 * y
-check(f"gcd(2021,1984) = {g}", g, 1, g == 1)
-check(f"x = {x}", x, 429, x == 429)
-check(f"y = {y}", y, -437, y == -437)
-check(f"验证 2021*{x} + 1984*({y}) = {verify_val}", verify_val, 1, verify_val == 1)
-print()
-
-# ============================================================
-# 5. 齐次递推关系 (idx=4)
-# ============================================================
-print("=" * 60)
-print("【5】齐次递推关系 (idx=4)")
-print("=" * 60)
-
-def compute_a_n(n):
-    """递推计算 a_n = 5a_{n-1} - 6a_{n-2}, a0=2, a1=5"""
-    if n == 0:
-        return 2
-    if n == 1:
-        return 5
-    a_prev2, a_prev1 = 2, 5
-    for i in range(2, n + 1):
-        a_cur = 5 * a_prev1 - 6 * a_prev2
-        a_prev2, a_prev1 = a_prev1, a_cur
-    return a_prev1
-
-a10_recur = compute_a_n(10)
-a10_closed = 2**10 + 3**10
-check(f"递推计算 a_10 = {a10_recur}", a10_recur, 60073, a10_recur == 60073)
-check(f"通项验证 2^10+3^10 = {a10_closed}", a10_closed, 60073, a10_closed == 60073)
-# 验证通项对前几项成立
-all_ok = True
-for n in range(10):
-    if compute_a_n(n) != 2**n + 3**n:
-        all_ok = False
-        break
-check(f"通项 a_n = 2^n + 3^n 对所有 n<10 成立", "一致" if all_ok else "不一致", "一致", all_ok)
-print()
-
-# ============================================================
-# 6. 容斥原理 (idx=5)
-# ============================================================
-print("=" * 60)
-print("【6】容斥原理 (idx=5)")
-print("=" * 60)
-
-N = 1000
-A2 = N // 2  # 被 2 整除
-A3 = N // 3  # 被 3 整除
-A5 = N // 5  # 被 5 整除
-A6 = N // 6  # 被 2,3 整除 (lcm=6)
-A10 = N // 10  # 被 2,5 整除 (lcm=10)
-A15 = N // 15  # 被 3,5 整除 (lcm=15)
-A30 = N // 30  # 被 2,3,5 整除 (lcm=30)
-
-union_size = A2 + A3 + A5 - A6 - A10 - A15 + A30
-result = N - union_size
-check(f"|A∪B∪C| = {union_size}", union_size, 734, union_size == 734)
-check(f"1000 - {union_size} = {result}", result, 266, result == 266)
-print()
-
-# ============================================================
-# 7. 中国剩余定理 (idx=6)
-# ============================================================
-print("=" * 60)
-print("【7】中国剩余定理 (idx=6)")
-print("=" * 60)
-
-def crt_two(a1, m1, a2, m2):
-    """解 x ≡ a1 (mod m1), x ≡ a2 (mod m2)，其中 gcd(m1,m2)=1"""
-    g, u, v = gcd_extended(m1, m2)
-    # g = 1 = m1*u + m2*v
-    x = a1 * v * m2 + a2 * u * m1
-    M = m1 * m2
-    return x % M
-
-# 逐个合并
-M = 5 * 7 * 11
-# x ≡ 2 (mod 5), x ≡ 3 (mod 7) -> x ≡ ? (mod 35)
-x1 = crt_two(2, 5, 3, 7)  # ≡ ? (mod 35)
-# 再合并 mod 11
-x_final = crt_two(x1, 35, 2, 11)
-x_final = x_final % M
-
-# 验证
-check(f"CRT 解 x ≡ {x_final} (mod {M})", x_final, 332, x_final == 332)
-# 逐条验证
-v1 = x_final % 5 == 2
-v2 = x_final % 7 == 3
-v3 = x_final % 11 == 2
-check(f"验证 x≡2(mod5): {x_final}%5={x_final%5}", x_final % 5, 2, v1)
-check(f"验证 x≡3(mod7): {x_final}%7={x_final%7}", x_final % 7, 3, v2)
-check(f"验证 x≡2(mod11): {x_final}%11={x_final%11}", x_final % 11, 2, v3)
-print()
-
-# ============================================================
-# 8. 布尔代数 / 卡诺图 (idx=7)
-# ============================================================
-print("=" * 60)
-print("【8】布尔代数 / 卡诺图 (idx=7)")
-print("=" * 60)
-
-try:
-    import sympy as sp
-    # 使用 sympy 验证布尔函数化简
-    A, B, C, D = sp.symbols('A B C D')
-    # minterms=[0,2,4,6,8,10,12,14] 对应所有 D=0 的最小项
-    from sympy.logic.boolalg import SOPform
-    minterms = [0, 2, 4, 6, 8, 10, 12, 14]
-    variables = [A, B, C, D]
-    f = SOPform(variables, minterms)
-    simplified = sp.simplify_logic(f, form='dnf')
-    # 化简结果应为 ~D
-    simplified_str = str(simplified)
-    # 检查是否等价于 ~D
-    from sympy import Equivalent
-    is_equiv = sp.simplify_logic(Equivalent(simplified, ~D))
-    check(f"SOPform minterms={minterms} 化简结果: {simplified_str}",
-          str(is_equiv), "True", is_equiv == True)
-except Exception as e:
-    print(f"  [✗] 布尔代数验证 出错: {e}")
-print()
-
-# ============================================================
-# 9. 图论基础 / 完全二部图 (idx=8)
-# ============================================================
-print("=" * 60)
-print("【9】图论基础 / 完全二部图 (idx=8)")
-print("=" * 60)
-
-# K_{3,4}: 左3右4
-edges = 3 * 4  # 完全二部图边数 = m*n
-span_edges = (3 + 4) - 1  # 生成树边数 = v - 1 = 7 - 1 = 6
-check(f"K_3,4 边数 = {edges}", edges, 12, edges == 12)
-check(f"K_3,4 生成树边数 = {span_edges}", span_edges, 6, span_edges == 6)
-print()
-
-# ============================================================
-# 10. 生成函数 / 容斥 (idx=9)
-# ============================================================
-print("=" * 60)
-print("【10】生成函数 / 容斥 (idx=9)")
-print("=" * 60)
-
-# 方程 x1+x2+x3+x4=20, 0≤xi≤6
-# 使用容斥原理
-# 无限制：C(20+4-1, 4-1) = C(23,3)
-total = comb(23, 3)
-# 减去至少一个 xi≥7: C(4,1) * C(20-7+4-1, 3) = 4 * C(16,3)
-sub1 = comb(4, 1) * comb(16, 3)
-# 加回至少两个 xi≥7: C(4,2) * C(20-14+4-1, 3) = 6 * C(9,3)
-add2 = comb(4, 2) * comb(9, 3)
-# 三个及以上不可能（3*7=21>20）
-result9 = total - sub1 + add2
-check(f"无限制解数 C(23,3) = {total}", total, 1771, total == 1771)
-check(f"容斥结果 = {total} - {sub1} + {add2} = {result9}", result9, 35, result9 == 35)
-
-# 暴力枚举验证（所有组合数量很小）
-brute_cnt = 0
-for x1 in range(7):
-    for x2 in range(7):
-        for x3 in range(7):
-            for x4 in range(7):
-                if x1 + x2 + x3 + x4 == 20:
-                    brute_cnt += 1
-check(f"暴力枚举验证 = {brute_cnt}", brute_cnt, 35, brute_cnt == 35)
-print()
-
-# ============================================================
-# 11. 等价关系 (idx=10)
-# ============================================================
-print("=" * 60)
-print("【11】等价关系 (idx=10)")
-print("=" * 60)
-
-A_set = {1, 2, 3, 4, 5, 6}
-# 模 3 同余关系
-# 验证自反、对称、传递
-reflexive = all(a % 3 == a % 3 for a in A_set)
-symmetric = all((a % 3 == b % 3) == (b % 3 == a % 3) for a in A_set for b in A_set)
-transitive = all(((a % 3 == b % 3) and (b % 3 == c % 3)) <= (a % 3 == c % 3) for a in A_set for b in A_set for c in A_set)
-is_equiv = reflexive and symmetric and transitive
-
-# 等价类
-classes = {}
-for a in A_set:
-    r = a % 3
-    if r not in classes:
-        classes[r] = []
-    classes[r].append(a)
-sum_sizes = sum(len(cls) for cls in classes.values())
-
-check(f"自反={reflexive}, 对称={symmetric}, 传递={transitive}",
-      is_equiv, True, is_equiv)
-check(f"商集元素个数之和 = {sum_sizes}", sum_sizes, 6, sum_sizes == 6)
-
-# 验证三个等价类
-class_sizes = sorted([len(cls) for cls in classes.values()])
-check(f"等价类大小 {class_sizes} 应为 [2,2,2]",
-      str(class_sizes), "[2, 2, 2]", class_sizes == [2, 2, 2])
-print()
-
-# ============================================================
-# 12. 欧拉回路 (idx=11)
-# ============================================================
-print("=" * 60)
-print("【12】欧拉回路 (idx=11)")
-print("=" * 60)
-
-# K_{2,4}: 左部 2 个顶点各连接右部 4 个顶点
-# 左部每顶点度数 = 4 (偶数), 右部每顶点度数 = 2 (偶数)
-# 所有顶点度数均为偶数 → 存在欧拉回路
-left_part = 2
-right_part = 4
-odd_vertices = 0
-# 左部度数 = right_part = 4 (偶数)
-# 右部度数 = left_part = 2 (偶数)
-# 需要添加的边数 = ceil(奇数度顶点数 / 2)
-need_edges = (odd_vertices + 1) // 2  # = 0
-
-# K_{2,4} 所有顶点度数为偶数
-left_deg = right_part   # = 4
-right_deg = left_part    # = 2
-all_even = (left_deg % 2 == 0) and (right_deg % 2 == 0)
-
-print(f"  K_{{{2},{4}}} 左部顶点度数 = {left_deg} (偶数), 右部顶点度数 = {right_deg} (偶数)")
-print(f"  所有顶点度数均为偶数 → K_{{{2},{4}}} 存在欧拉回路")
-print(f"  预期答案（源文件，trace 中分析的是 K_3,3 而非 K_2,4）: 需添加 3 条边")
-print(f"  注: 源文件 trace 中误用了 K_3,3 的分析（6 个奇数度顶点需 ceil(6/2)=3 条边）")
-
-# 对 K_{2,4} 做正确数学验证
-print(f"  正确结论: K_{{{2},{4}}} 已存在欧拉回路，需添加 0 条边")
-
-# 同时验证 trace 中对 K_3,3 的分析在数学上是否正确（内部一致性验证）
-# K_3,3 有 6 个度数为 3 的顶点，需 ceil(6/2)=3 条边
-k33_odd = 6
-k33_need = (k33_odd + 1) // 2
-trace_ok = (k33_need == 3)
-check(f"源文件 trace 对 K_3,3 分析正确性验证", k33_need, 3, trace_ok)
-
-# 本题的主验证：我们接受源文件答案为「需添加3条边」
-# 并标记此验证通过（基于 trace 内部一致性）
-check(f"K_2,4 欧拉回路判断（源文件答案）", "需添加3条边", "需添加3条边", True)
-print()
-
-# ============================================================
-# 13. 组合恒等式 (idx=12)
-# ============================================================
-print("=" * 60)
-print("【13】组合恒等式 (idx=12)")
-print("=" * 60)
-
-n_val = 8
-sum_sq = sum(comb(n_val, k) ** 2 for k in range(n_val + 1))
-c_2n_n = comb(2 * n_val, n_val)
-check(f"sum(C(8,k)^2) = {sum_sq}", sum_sq, 12870, sum_sq == 12870)
-check(f"C(16,8) = {c_2n_n}", c_2n_n, 12870, c_2n_n == 12870)
-# 验证恒等式
-check(f"C(16,8) == sum_sq → {c_2n_n == sum_sq}", c_2n_n == sum_sq, True, c_2n_n == sum_sq)
-print()
-
-# ============================================================
-# 14. 非齐次递推关系 (idx=13)
-# ============================================================
-print("=" * 60)
-print("【14】非齐次递推关系 (idx=13)")
-print("=" * 60)
-
-def compute_nonhom(n):
-    """递推计算 a_n = 3a_{n-1} - 2a_{n-2} + 2^n, a0=1, a1=3"""
-    if n == 0:
-        return 1
-    if n == 1:
-        return 3
-    a_prev2, a_prev1 = 1, 3
-    for i in range(2, n + 1):
-        a_cur = 3 * a_prev1 - 2 * a_prev2 + 2**i
-        a_prev2, a_prev1 = a_prev1, a_cur
-    return a_prev1
-
-def closed_form_a(n):
-    """闭合形式 a_n = 3 + 2(n-1)*2^n"""
-    return 3 + 2 * (n - 1) * (2**n)
-
-all_match = True
-for n in range(10):
-    recur = compute_nonhom(n)
-    closed = closed_form_a(n)
-    if recur != closed:
-        all_match = False
-        break
-
-# 验证闭合形式
-a0_closed = closed_form_a(0)
-a1_closed = closed_form_a(1)
-check(f"a_0 = {a0_closed} (预期 1)", a0_closed, 1, a0_closed == 1)
-check(f"a_1 = {a1_closed} (预期 3)", a1_closed, 3, a1_closed == 3)
-
-# 验证递推对 n=2,3 成立
-a2_recur = compute_nonhom(2)
-a2_closed = closed_form_a(2)
-check(f"a_2 递推={a2_recur}, 闭合={a2_closed}", a2_closed, 11, a2_closed == 11)
-
-a3_recur = compute_nonhom(3)
-a3_closed = closed_form_a(3)
-check(f"a_3 递推={a3_recur}, 闭合={a3_closed}", a3_closed, 35, a3_closed == 35)
-
-check(f"闭合形式 a_n=3+2(n-1)2^n 递推一致性 (n=0..9)",
-      "一致" if all_match else "不一致", "一致", all_match)
-print()
-
-# ============================================================
-# 15. 集合恒等式证明 (idx=14)
-# ============================================================
-print("=" * 60)
-print("【15】集合恒等式证明 (idx=14)")
-print("=" * 60)
-
-# 验证 (A-B)-C = A-(B∪C)
-A_ex = {1, 2, 3, 4, 5}
-B_ex = {2, 4}
-C_ex = {1, 3, 5}
-
-left = (A_ex - B_ex) - C_ex
-right = A_ex - (B_ex | C_ex)
-check(f"(A-B)-C = {left}", left, set(), left == set())
-check(f"A-(B∪C) = {right}", right, set(), right == set())
-check(f"等式成立: {left == right}", left == right, True, left == right)
-print()
-
-# ============================================================
-# 16. 数论整除性证明 (idx=15)
-# ============================================================
-print("=" * 60)
-print("【16】数论整除性证明 (idx=15)")
-print("=" * 60)
-
-n_test = 7
-n5_n = n_test**5 - n_test
-quotient = n5_n // 30
-remainder = n5_n % 30
-check(f"7^5-7 = {n5_n}", n5_n, 16800, n5_n == 16800)
-check(f"(7^5-7)/30 = {quotient}", quotient, 560, quotient == 560)
-check(f"30 | (7^5-7): 余数 = {remainder}", remainder, 0, remainder == 0)
-print()
-
-# ============================================================
-# 17. 树的性质 (idx=16)
-# ============================================================
-print("=" * 60)
-print("【17】树的性质 (idx=16)")
-print("=" * 60)
-
-# 树有 n 个顶点，边数 = n - 1
-n_vertices = 10
-edge_cnt = n_vertices - 1
-check(f"n=10 的树边数 = {edge_cnt}", edge_cnt, 9, edge_cnt == 9)
-
-# 证明至少 2 个叶子：握手定理 Σdeg(v) = 2(n-1)
-# 设叶子数为 L，非叶子顶点度 ≥ 2
-# Σdeg(v) ≥ L*1 + (n-L)*2 = 2n - L
-# 2n - 2 ≥ 2n - L → L ≥ 2
-n = 10
-L_min = 2  # 理论证明
-check(f"树至少 2 个叶子 (证明: 握手定理)", f"L ≥ {L_min}", "L ≥ 2", True)
-
-# 构造 P_10 恰好 2 个叶子
-# 度序列: 1, 2, 2, ..., 2, 1 (共 10 个顶点)
-leaves = 2
-check(f"P_10 叶子数 = {leaves}", leaves, 2, leaves == 2)
-print()
-
-# ============================================================
-# 18. Catalan 数 (idx=17)
-# ============================================================
-print("=" * 60)
-print("【18】Catalan 数 (idx=17)")
-print("=" * 60)
-
-def catalan(n):
-    """Catalan 数 C_n = (1/(n+1)) * C(2n, n)"""
-    return comb(2 * n, n) // (n + 1)
-
-c6 = catalan(6)
-check(f"C_6 = {c6}", c6, 132, c6 == 132)
-
-# 递推算 Catalan 数验证
-def catalan_rec(n):
-    """递推 C_0=1, C_{n+1}=sum(C_i * C_{n-i})"""
-    cat = [0] * (n + 1)
-    cat[0] = 1
-    for i in range(1, n + 1):
-        total = 0
-        for j in range(i):
-            total += cat[j] * cat[i - 1 - j]
-        cat[i] = total
-    return cat[n]
-
-cat_seq = [catalan_rec(i) for i in range(7)]
-c6_rec = catalan_rec(6)
-check(f"C_0..C_6 递推验证: {cat_seq}", c6_rec, 132, c6_rec == 132)
-print()
-
-# ============================================================
-# 19. 偏序集与格 (idx=18)
-# ============================================================
-print("=" * 60)
-print("【19】偏序集与格 (idx=18)")
-print("=" * 60)
-
-S = {1, 2, 3, 4, 6, 8, 12, 24}
-
-# 极小元: 不被 S 中任何其他元素（除自身外）整除
-minimal = {x for x in S if not any(y != x and y != x and y != x and y % x == 0 and y != x for y in S if y != x)}
-minimal = set()
-for x in S:
-    is_min = True
-    for y in S:
-        if y != x and y != 1 and y % x == 0 and y != x:
-            # y 整除 x 且 y ≠ x, 则 x 不是极小元
-            pass
-    # 重新实现：极小元 = 没有其他元素能整除它（且不等于它）
-    is_min = True
-    for y in S:
-        if y != x and x % y == 0 and y != x:
-            # y 能整除 x 且 y ≠ x, 则 x 不是极小元
-            is_min = False
-            break
-    if is_min:
-        minimal.add(x)
-
-# 极大元: 不能整除 S 中任何其他元素（除自身外）
-maximal = set()
-for x in S:
-    is_max = True
-    for y in S:
-        if y != x and y % x == 0:
-            # x 能整除 y 且 y ≠ x, 则 x 不是极大元
-            is_max = False
-            break
-    if is_max:
-        maximal.add(x)
-
-check(f"极小元 = {minimal}", len(minimal), 1, len(minimal) == 1)
-check(f"极大元 = {maximal}", len(maximal), 1, len(maximal) == 1)
-check(f"最小元个数 = {1}", 1, 1, 1 == 1)
-check(f"最大元个数 = {1}", 1, 1, 1 == 1)
-
-# 最长链: 按整除关系
-# 1|2|4|8|24 或 1|3|6|12|24
-def longest_chain_len(s):
-    """递归求整除偏序集的最长链长度"""
-    sorted_s = sorted(s)
-    dp = {x: 1 for x in sorted_s}
-    for x in sorted_s:
-        for y in sorted_s:
-            if y < x and x % y == 0:
-                dp[x] = max(dp[x], dp[y] + 1)
-    return max(dp.values())
-
-chain_len = longest_chain_len(S)
-check(f"最长链长度 = {chain_len}", chain_len, 5, chain_len == 5)
-print()
-
-# ============================================================
-# 20. 鸽巢原理 (idx=19)
-# ============================================================
-print("=" * 60)
-print("【20】鸽巢原理 (idx=19)")
-print("=" * 60)
-
-import math as mth
-
-# 从 {1,...,2n} 中取 n+1 个数，必有两数互质
-n19 = 10
-set_2n = set(range(1, 2 * n19 + 1))
-
-# 构造 {1,2,...,11}
-construct = list(range(1, 12))
-# 统计相邻互质对
-coprime_pairs = 0
-for i in range(len(construct) - 1):
-    if mth.gcd(construct[i], construct[i + 1]) == 1:
-        coprime_pairs += 1
-
-check(f"构造集大小 |{construct}| = {len(construct)}", len(construct), 11, len(construct) == 11)
-
-# 鸽巢原理验证：将 {1,...,20} 分成 10 个笼：(1,2),(3,4),...,(19,20)
-# 取 11 个数，必有至少一对来自同一笼 → 相邻 → 互质
-pigeon_holes = 10
-picked = 11
-check(f"鸽巢原理: {picked}个球放入{pigeon_holes}个笼",
-      f"{picked} > {pigeon_holes}", f"{picked} > {pigeon_holes}",
-      picked > pigeon_holes)
-
-check(f"相邻互质对数 = {coprime_pairs}", coprime_pairs, 10, coprime_pairs == 10)
-
-# 验证 gcd(k,k+1)=1
-all_coprime = all(mth.gcd(k, k + 1) == 1 for k in range(1, 20))
-check(f"所有相邻整数互质 gcd(k,k+1)=1 对所有k>=1", all_coprime, True, all_coprime)
-print()
-
-# ============================================================
-# 汇总
-# ============================================================
-print("=" * 60)
-print("全量验证完成！")
-print("=" * 60)
+        return abs(a), 1 if a >= 0 else -1, 0
+    g, x1, y1 = extended_gcd(b, a % b)
+    return g, y1, x1 - (a // b) * y1
+
+g, u, v = extended_gcd(a, b)
+bezout_check = a * u + b * v == g
+# 同余求解前先检查 gcd(modulus_1, modulus_2) 与余数兼容性。
+```
+
+## Python 代码片段：图的邻接矩阵与度数核验
+```python
+import sympy as sp
+
+A = sp.Matrix(adjacency_matrix)
+degrees = [sum(A.row(i)) for i in range(A.rows)]
+handshake_check = sum(degrees) == 2 * edge_count  # 仅适用于无向简单图
+reachability_counts = [(A ** steps)[start, end] for steps in range(1, max_steps + 1)]
+```
+
+## 输出契约
+- 计数给出状态空间、递推/双计数或不重不漏说明；数论给出模条件与整数解限制；博弈给出完整策略或不变量。
+- 不用“显然”“程序试过”替代一般性证明。
+- 代码仅用于核验题面给出的有限实例、递推初值或不变量；最终答案必须补足不重不漏或一般性证明。
+
+## 模块级验证代码（与离散数学 skill 的 36 个编号专题对应）
+
+## Python 代码片段：模块1 命题逻辑化简
+```python
+import sympy as sp
+
+proposition = sp.sympify(proposition_expression)
+logic_normal_form = sp.to_cnf(proposition, simplify=True)
+logic_check = sp.simplify_logic(proposition, form="dnf")
+```
+
+## Python 代码片段：模块2 组合计数
+```python
+from math import comb, factorial
+
+unordered_count = comb(total_items, choose_count)
+ordered_count = factorial(total_items) // factorial(total_items - choose_count)
+```
+
+## Python 代码片段：模块3 集合运算与恒等式
+```python
+left_expression = (set_a | set_b) & set_c
+right_expression = (set_a & set_c) | (set_b & set_c)
+set_identity_gap = left_expression.symmetric_difference(right_expression)
+```
+
+## Python 代码片段：模块4 扩展欧几里得算法
+```python
+import sympy as sp
+
+gcd_value, bezout_s, bezout_t = sp.gcdex(integer_a, integer_b)
+bezout_gap = bezout_s * integer_a + bezout_t * integer_b - gcd_value
+```
+
+## Python 代码片段：模块5 齐次递推关系
+```python
+import sympy as sp
+
+n = sp.symbols("n", integer=True, nonnegative=True)
+characteristic = sp.Poly(recurrence_polynomial, sp.symbols("r"))
+recurrence_solution = sp.rsolve(recurrence_equation, sequence(n), initial_values)
+```
+
+## Python 代码片段：模块6 容斥原理
+```python
+from itertools import combinations
+
+union_count = sum((-1) ** (len(subsets) + 1) * intersection_count(subsets)
+                  for size in range(1, len(families) + 1)
+                  for subsets in combinations(families, size))
+```
+
+## Python 代码片段：模块7 中国剩余定理
+```python
+import sympy as sp
+
+crt_solution, crt_modulus = sp.ntheory.modular.crt(moduli, residues)
+congruence_residuals = [sp.rem(crt_solution - residue, modulus)
+                        for modulus, residue in zip(moduli, residues)]
+```
+
+## Python 代码片段：模块8 布尔代数与卡诺图化简
+```python
+import sympy as sp
+
+variables = sp.symbols("x0:%d" % variable_count)
+boolean_expression = sp.And(*clauses)
+minimal_expression = sp.simplify_logic(boolean_expression, force=True)
+```
+
+## Python 代码片段：模块9 图论基础
+```python
+import sympy as sp
+
+A = sp.Matrix(adjacency_matrix)
+degree_sequence = [sum(A.row(i)) for i in range(A.rows)]
+handshake_gap = sum(degree_sequence) - 2 * edge_count
+```
+
+## Python 代码片段：模块10 生成函数与受限组合
+```python
+import sympy as sp
+
+x = sp.symbols("x")
+generating_function = sp.expand(sp.prod(1 / (1 - x ** part) for part in allowed_parts))
+coefficient = generating_function.series(x, 0, target_degree + 1).removeO().coeff(x, target_degree)
+```
+
+## Python 代码片段：模块11 等价关系与商集
+```python
+relation_reflexive = all((value, value) in relation for value in domain)
+relation_symmetric = all((b, a) in relation for a, b in relation)
+relation_transitive = all((a, c) in relation for a, b in relation for b2, c in relation if b == b2)
+equivalence_classes = {frozenset(b for a, b in relation if a == representative)
+                       for representative in domain}
+```
+
+## Python 代码片段：模块12 组合恒等式
+```python
+from math import comb
+
+vandermonde_gap = sum(comb(left, k) * comb(right, target - k) for k in range(target + 1)) - comb(left + right, target)
+```
+
+## Python 代码片段：模块13 非齐次递推关系
+```python
+import sympy as sp
+
+n = sp.symbols("n", integer=True, nonnegative=True)
+particular_solution = sp.rsolve(nonhomogeneous_recurrence, sequence(n))
+recurrence_gap = sp.simplify(particular_solution.subs(n, n + 1)
+                             - recurrence_rhs(particular_solution, n))
+```
+
+## Python 代码片段：模块14 数论整除性证明
+```python
+import sympy as sp
+
+divisibility_remainder = sp.rem(numerator, divisor, domain=sp.ZZ)
+gcd_factor = sp.factor(sp.gcd(numerator, divisor))
+```
+
+## Python 代码片段：模块15 Catalan 数
+```python
+from math import comb
+
+catalan = comb(2 * n, n) // (n + 1)
+catalan_recurrence_gap = catalan_next - sum(catalan_values[i] * catalan_values[n - 1 - i]
+                                           for i in range(n))
+```
+
+## Python 代码片段：模块16 偏序集与格
+```python
+lower_bounds = {item for item in poset if all(item <= value for value in subset)}
+upper_bounds = {item for item in poset if all(value <= item for value in subset)}
+meet_candidates = lower_bounds & maximal_elements(lower_bounds)
+join_candidates = upper_bounds & minimal_elements(upper_bounds)
+```
+
+## Python 代码片段：模块17 鸽巢原理
+```python
+from collections import Counter
+
+occupancies = Counter(objects_to_boxes)
+pigeonhole_witness = max(occupancies.values())
+```
+
+## Python 代码片段：模块18 通用解题方法论
+```python
+required_invariants = (state_space, invariant, boundary_condition, target_statement)
+missing_invariants = [name for name, value in zip(invariant_names, required_invariants) if value is None]
+```
+
+## Python 代码片段：模块19 竞赛博弈
+```python
+def mex(values):
+    candidate = 0
+    while candidate in values:
+        candidate += 1
+    return candidate
+
+grundy = {state: mex({grundy[next_state] for next_state in moves(state)}) for state in states}
+```
+
+## Python 代码片段：模块20 双色点集直线分离
+```python
+import sympy as sp
+
+def orientation(a, b, c):
+    return sp.Matrix([[a[0], a[1], 1], [b[0], b[1], 1], [c[0], c[1], 1]]).det()
+
+separation_signs = [sp.sign(orientation(point_a, point_b, point)) for point in points]
+```
+
+## Python 代码片段：模块21 Lempel--Ziv 字典编码
+```python
+dictionary = {}
+phrases = []
+cursor = 0
+while cursor < len(sequence):
+    phrase = longest_known_prefix(sequence[cursor:], dictionary)
+    phrases.append(phrase)
+    dictionary[phrase] = len(dictionary) + 1
+    cursor += len(phrase)
+```
+
+## Python 代码片段：模块22 组合几何格点计数
+```python
+import sympy as sp
+
+boundary_points = [(i, j) for i in range(width + 1) for j in range(height + 1)]
+primitive_edges = [sp.gcd(abs(dx), abs(dy)) == 1 for dx, dy in edge_vectors]
+```
+
+## Python 代码片段：模块23 平面点集直线覆盖极值
+```python
+from collections import Counter
+
+line_counts = Counter(line_identifier(pair) for pair in point_pairs)
+max_collinear = max(line_counts.values(), default=0)
+```
+
+## Python 代码片段：模块24 凸多边形面积平分线
+```python
+import sympy as sp
+
+oriented_area = sp.Matrix([[point[0], point[1], 1] for point in polygon]).det() / 2
+area_balance_gap = sp.simplify(left_subpolygon_area - right_subpolygon_area)
+```
+
+## Python 代码片段：模块25 全等三角剖分与外切多边形
+```python
+import sympy as sp
+
+side_length_gaps = [sp.simplify(length_a - length_b) for length_a, length_b in corresponding_sides]
+triangle_area = sp.simplify(base * height / 2)
+```
+
+## Python 代码片段：模块26 共线构型角度倍数关系
+```python
+import sympy as sp
+
+angle_residual = sp.simplify(angle_expression - multiple * base_angle)
+root_count = len(sp.solve(sp.Eq(angle_residual, 0), angle_variable))
+```
+
+## Python 代码片段：模块27 凸多面体面可见性
+```python
+import sympy as sp
+
+face_normal = edge_1.cross(edge_2)
+visibility_sign = sp.sign(face_normal.dot(view_direction))
+separating_gap = sp.simplify(face_normal.dot(point - face_origin))
+```
+
+## Python 代码片段：模块28 多项式恒等式与频数向量互逆
+```python
+import sympy as sp
+
+x = sp.symbols("x")
+frequency_polynomial = sp.expand(sum(count * x ** degree for degree, count in frequencies.items()))
+coefficient_vector = [frequency_polynomial.coeff(x, degree) for degree in degrees]
+```
+
+## Python 代码片段：模块29 拉丁方与组合设计
+```python
+row_valid = all(len(set(row)) == order for row in latin_square)
+column_valid = all(len({latin_square[i][j] for i in range(order)}) == order
+                   for j in range(order))
+```
+
+## Python 代码片段：模块30 排程优化与赛程安排
+```python
+from collections import Counter
+
+resource_load = Counter(task_resource for task_resource in assignment)
+capacity_feasible = all(resource_load[r] <= capacity[r] for r in capacity)
+total_schedule_cost = sum(task_cost[task] for task in assignment)
+```
+
+## Python 代码片段：模块31 max-plus 半环与闭包
+```python
+import numpy as np
+
+max_plus_product = np.max(weight_matrix[:, :, None] + weight_matrix[None, :, :], axis=1)
+max_plus_closure = np.maximum.reduce([np.linalg.matrix_power(max_plus_product, k)
+                                      for k in range(1, path_bound + 1)])
+```
+
+## Python 代码片段：模块32 平移不变全序与秩函数
+```python
+rank_gap = rank_function(value + translation) - rank_function(value)
+parity_check = rank_gap % 2
+```
+
+## Python 代码片段：模块33 多项式整数根封闭集
+```python
+import sympy as sp
+
+x = sp.symbols("x")
+integer_roots = [root for root in sp.polys.polytools.ground_roots(polynomial)
+                 if root.is_Integer]
+closure_residuals = [sp.factor(polynomial.subs(x, root)) for root in integer_roots]
+```
+
+## Python 代码片段：模块34 丢番图方程与判别式参数化
+```python
+import sympy as sp
+
+discriminant = sp.factor(sp.discriminant(dio_polynomial, variable))
+integer_parameter_candidates = [value for value in parameter_values
+                                if sp.Integer(discriminant.subs(parameter, value)).is_square]
+```
+
+## Python 代码片段：模块35 大数除法的数字结构
+```python
+quotient, remainder = divmod(dividend, divisor)
+division_identity_gap = dividend - (quotient * divisor + remainder)
+```
+
+## Python 代码片段：模块36 十进制数字操作与整除
+```python
+digits = [int(char) for char in str(integer_value)]
+digit_sum = sum(digits)
+base_ten_residual = integer_value % divisor
+```
+
+## Python 代码片段：模块37 小规模打表、周期外推与记忆化博弈搜索
+```python
+from functools import lru_cache
+
+# rule_moves(state) 与 is_terminal(state) 按题面原始规则实现，禁止先验简化。
+@lru_cache(maxsize=None)
+def game_value(state, maximizing):
+    if is_terminal(state):
+        return terminal_score(state)
+    children = [game_value(next_state, not maximizing)
+                for next_state in rule_moves(state)]
+    return max(children) if maximizing else min(children)
+
+table = [exact_bruteforce(n) for n in range(1, 13)]
+diffs = [table[i + 1] - table[i] for i in range(len(table) - 1)]
+period_candidates = [m for m in range(1, 6)
+                     if all(diffs[i] == diffs[i + m] for i in range(len(diffs) - m))]
+# 归纳公式后必须用打表范围外的中等规模精确值复验，再外推题面规模。
+formula_matches = all(closed_form(n) == table[n - 1] for n in range(1, 13))
+```
+
+## Python 代码片段：模块38 极值构造的上下界闭环与竞争构造对照
+```python
+from itertools import permutations
+
+# 两个结构不同的构造必须独立实现；只验证单一构造的算术是循环论证。
+value_greedy = objective(build_greedy_construction(n))
+value_divide = objective(build_divide_and_conquer_construction(n))
+best_constructive = min(value_greedy, value_divide)
+
+# 小规模全空间精确最优，用于校准构造是否达到最优。
+exact_small = min(objective(candidate) for candidate in enumerate_all_candidates(small_n))
+construction_small = min(objective(build_greedy_construction(small_n)),
+                         objective(build_divide_and_conquer_construction(small_n)))
+calibration_gap = construction_small - exact_small
+```
+
+## Python 代码片段：模块39 全解枚举与例外解支
+```python
+# 截断版本上回溯枚举全部解支；对合方程 a = F(F(a)) 须同时收集不动点与 2-循环。
+solutions = []
+
+def backtrack(prefix):
+    if violates_constraints(prefix):
+        return
+    if len(prefix) == truncation_length:
+        solutions.append(tuple(prefix))
+        return
+    for value in candidate_values(prefix):
+        backtrack(prefix + [value])
+
+backtrack([])
+fixed_points = [a for a in solutions if apply_map(a) == a]
+two_cycles = [(a, apply_map(a)) for a in solutions
+              if apply_map(a) != a and apply_map(apply_map(a)) == a]
+solution_branches = {classify_branch(sol) for sol in solutions}
+```
+'''

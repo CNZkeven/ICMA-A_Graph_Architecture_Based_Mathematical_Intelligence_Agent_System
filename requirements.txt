@@ -1,27 +1,51 @@
+# Complete Python dependencies: solver, retrieval, local Web Demo and offline tests.
+# Python >=3.10; validated with Python 3.11 in the competition Conda environment.
+# Install from the project root: python -m pip install -r requirements.txt
+# Frontend dependencies are managed separately by web/package-lock.json (npm ci).
+# SQLite is part of Python's standard library and needs no pip package.
+
 # HTTP client for the OpenAI-compatible Intern-S chat endpoint.
-requests>=2.31.0
+requests>=2.31.0,<3.0.0
 
 # LangGraph orchestration and RunnableConfig typing used by node wrappers.
 langgraph>=1.2.0,<2.0.0
 langchain-core>=1.4.7,<2.0.0
 
-# Optional standalone FastMCP server support for mcp_servers/python_executor/server.py.
-mcp>=1.0.0
+# Standalone FastMCP server support for mcp_servers/python_executor/server.py.
+mcp>=1.0.0,<2.0.0
 
-# Symbolic, numeric, and scientific computation used by Python verification scripts.
-sympy>=1.12
-mpmath>=1.3
-numpy>=1.24.0
-scipy>=1.10.0
+# Symbolic, numeric and scientific computation used by Python verification code.
+sympy>=1.12,<2.0
+mpmath>=1.3,<2.0
+numpy>=1.24.0,<3.0.0
+scipy>=1.10.0,<2.0.0
+# The operations-research verification examples use NetworkX graph algorithms.
+networkx>=3.0,<4.0
 
-# TF-IDF category retrieval for mathematical domain selection.
-scikit-learn>=1.3.0
+# TF-IDF category retrieval and fuzzy category/answer matching.
+scikit-learn>=1.3.0,<2.0.0
+python-Levenshtein>=0.20.0,<1.0.0
 
-# Fast fuzzy matching for category normalization and answer similarity fallback.
-python-Levenshtein>=0.20.0
+# TypedDict/NotRequired compatibility and structured stderr logging.
+typing-extensions>=4.9.0,<5.0.0
+# pythonjsonlogger.json is provided by python-json-logger 3 and later.
+python-json-logger>=3.0.0,<5.0.0
 
-# TypedDict NotRequired compatibility.
-typing-extensions>=4.9.0
+# Local ChromaDB retrieval and Qwen3-Embedding-0.6B inference.
+chromadb>=1.0.0,<2.0.0
+# The bundled model card requires sentence-transformers >=2.7 and
+# transformers >=4.51; older Transformers versions do not recognize qwen3.
+sentence-transformers>=2.7.0,<6.0.0
+transformers>=4.51.0,<6.0.0
+modelscope>=1.11.0,<2.0.0
+# torch >=2.5 also supports the Transformers 5.x backend. GPU is not required:
+# DatabaseClient explicitly uses CPU. To select CPU-only wheels, install torch
+# from https://download.pytorch.org/whl/cpu before installing this file.
+torch>=2.5.0,<3.0.0
 
-# Optional structured stderr logging; logger.py falls back to plain logging if unavailable.
-python-json-logger>=2.0.0
+# FastAPI, Uvicorn and Pydantic for demo_server (shared with the adapter-only file).
+-r demo_server/requirements.txt
+
+# Offline tests in tests/test_demo_server.py; HTTPX powers FastAPI TestClient.
+pytest>=8.0.0,<10.0.0
+httpx>=0.27.1,<0.29.0

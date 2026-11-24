@@ -42,6 +42,55 @@ def _enumeration_satisfied(answer):
     return len(re.findall(r"(?m)(?:^|[；;]\s*)\s*\d+\s*[.、)]", text)) >= 2
 
 
+_NUMERIC_OR_SYMBOLIC_RE = re.compile(r"\d|\\frac|\\sqrt|\\pi|π|\\infty")
+
+
+def _extremum_satisfied(answer):
+    """An extremum problem must deliver both the optimiser and the optimum.
+
+    2026-07-29 judge run, Q2: the answer gave only the tangent line
+    `y=\\frac{1}{2}x+\\frac{1}{2}` and silently dropped the minimum area
+    `2-\\frac{4\\sqrt{2}}{3}`, which the problem asks for as its whole point.
+    Requiring an explicit optimum value alongside the location catches that.
+    """
+    text = answer or ""
+    if not _NUMERIC_OR_SYMBOLIC_RE.search(text):
+        return False
+    # An explicitly named extremum ("最大值为 …", "最小面积 = …") settles it.
+    if re.search(r"(?:最大值|最小值|最值|极大值|极小值|最大|最小)[^。\n]{0,12}"
+                 r"(?:为|是|=|等于)", text):
+        return True
+    # Otherwise require at least two independent quantities: the optimiser (e.g.
+    # a=1, or the tangent equation) and the optimum itself.
+    return len(re.findall(r"=", text)) >= 2 or answer_part_count(text) >= 2
+
+
+def _tangent_and_area_satisfied(answer):
+    text = answer or ""
+    has_line = _has(text, r"y\s*=", r"切线|法线", r"x\s*[-+].{0,20}y")
+    has_area = _has(text, r"面积|S\s*=") or answer_part_count(text) >= 2
+    return has_line and has_area
+
+
+def _feasibility_count_satisfied(answer):
+    """可行性 + 计数双问项：答案必须带一个具体数量。
+
+    2026-08-10 复测轮 idx 31："Is it possible to cover ...? If it is possible, what
+    is the minimum number needed?" 的交付是光秃秃的"不可能"——由一个错误的整除性
+    论证得出。题面把计数写成第二问，说明出题人预期可行；答案只有否定词而无数量时
+    判为残缺，让更完整的候选（通常是 Python 分支或协调器正文）有机会胜出。
+    """
+    text = (answer or "").strip()
+    if not text:
+        return False
+    if not re.search(r"\d", text):
+        return False
+    # "不可能，因为 3 不整除 2025" 这类否定+数字仍然没有回答"多少个"。
+    negation_only = re.match(
+        r"^\s*(?:不可能|不能|无法|impossible|no\b|not possible)", text, flags=re.I)
+    return not negation_only
+
+
 _SATISFIED = {
     "hypothesis_conclusion": lambda a: _has(a, r"拒绝|接受原?假设|显著差异|不显著|无显著|显著地?(?:高|低|大|小|不同)"),
     "ci_two_sided": _ci_satisfied,
@@ -49,6 +98,9 @@ _SATISFIED = {
     "comparison_advice": lambda a: _has(a, r"建议|选择|更优|优于|较优|更好"),
     "matrices_shown": lambda a: _has(a, r"X\^T\s*X|X\^\{?T\}?\s*X|\\begin\{[pbv]matrix\}|Matrix\("),
     "enumerate_all": _enumeration_satisfied,
+    "extremum_value": _extremum_satisfied,
+    "tangent_and_area": _tangent_and_area_satisfied,
+    "feasibility_count": _feasibility_count_satisfied,
 }
 
 
@@ -68,6 +120,29 @@ def required_components(problem):
         comps.append("matrices_shown")
     if _has(p, r"(?:确定|求出?|列出|写出|枚举|找出|给出)[^。\n]{0,16}所有") or "互不同构" in p:
         comps.append("enumerate_all")
+    else:
+        # 英文题面的 "Find all the possible values of ..."（2026-08-10 复测轮 idx 14）
+        # 不匹配上面的中文模式，交付了三个值里的一个。复用题型画像的双语判定。
+        from utils.problem_profile import requires_all_solutions
+
+        if requires_all_solutions(p):
+            comps.append("enumerate_all")
+    # Optimisation problems: the optimiser alone is not the answer, the optimum is.
+    # (2026-07-29 judge set: Q1 asks for the maximising `a` *and* the maximum; Q2 for
+    # the tangent *and* the minimum area.)
+    if _has(p,
+            r"最大值|最小值|最值|极大值|极小值|取得最大|取得最小",
+            # "…图形的面积最小" (2026-07-29 Q2): the quantity precedes the extremum
+            # word and the clause can be long, so anchor on the quantity instead.
+            r"(?:面积|体积|周长|长度|距离|用量|成本|费用|误差|值)\s*最(?:大|小)",
+            r"使[^。\n]{0,40}最(?:大|小)"):
+        comps.append("extremum_value")
+    if _has(p, r"切线|法线") and _has(p, r"面积"):
+        comps.append("tangent_and_area")
+    from utils.problem_profile import asks_feasibility_then_count
+
+    if asks_feasibility_then_count(p):
+        comps.append("feasibility_count")
     return comps
 
 

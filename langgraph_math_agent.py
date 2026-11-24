@@ -1,9 +1,11 @@
 from langgraph.graph import StateGraph, START, END
 from state.math_agent_state import MathAgentState
 from graph.solving_subgraph import build_solving_subgraph
-from nodes import input_node, classifier_node, reconciliation_node, coordinator_node
+from nodes import (
+    input_node, classifier_node, reconciliation_node, semantic_arbiter_node,
+    coordinator_node,
+)
 from utils.error_handler import node_wrapper
-from config import CONFIG
 
 def build_math_agent_graph():
     g = StateGraph(MathAgentState)
@@ -11,6 +13,7 @@ def build_math_agent_graph():
     g.add_node("classifier", node_wrapper(classifier_node, "classifier"))
     g.add_node("solving", build_solving_subgraph())
     g.add_node("reconciliation", node_wrapper(reconciliation_node, "reconciliation"))
+    g.add_node("semantic_arbiter", node_wrapper(semantic_arbiter_node, "semantic_arbiter"))
     g.add_node("coordinator", node_wrapper(coordinator_node, "coordinator"))
 
     g.add_edge(START, "input")
@@ -20,16 +23,27 @@ def build_math_agent_graph():
     def route_after_solving(state, config):
         if state.get("should_terminate", False):
             return "coordinator"
-        return "reconciliation" if state.get("next_node") == "reconciliation" else "coordinator"
+        requested = state.get("next_node")
+        if requested in {"reconciliation", "semantic_arbiter"}:
+            return requested
+        return "coordinator"
     g.add_conditional_edges("solving", route_after_solving,
-                            {"coordinator": "coordinator", "reconciliation": "reconciliation"})
+                            {"coordinator": "coordinator", "reconciliation": "reconciliation",
+                             "semantic_arbiter": "semantic_arbiter"})
 
     def route_after_reconciliation(state, config):
-        if state.get("reconciliation_round", 0) >= CONFIG["reconciliation_max_rounds"]:
-            return "coordinator"
-        return "solving" if state.get("next_node") == "solving" else "coordinator"
+        requested = state.get("next_node")
+        if requested in {"solving", "semantic_arbiter"}:
+            return requested
+        return "coordinator"
     g.add_conditional_edges("reconciliation", route_after_reconciliation,
-                            {"solving": "solving", "coordinator": "coordinator"})
+                            {"solving": "solving", "semantic_arbiter": "semantic_arbiter",
+                             "coordinator": "coordinator"})
+
+    def route_after_semantic_arbiter(state, config):
+        return "reconciliation" if state.get("next_node") == "reconciliation" else "coordinator"
+    g.add_conditional_edges("semantic_arbiter", route_after_semantic_arbiter,
+                            {"reconciliation": "reconciliation", "coordinator": "coordinator"})
 
     g.add_edge("coordinator", END)
     return g.compile()
@@ -41,10 +55,23 @@ class MathAgentGraph:
         self.skills_loader = skills_loader
         self.mcp_client = mcp_client
 
-    def run(self, initial_state, token_budget=None):
+    def run(self, initial_state, token_budget=None, time_budget=None, event_sink=None):
         from utils.deps import Deps
         from utils.token_budget import TokenBudget
+        from utils.time_budget import TimeBudget
+        from utils.database_client import DatabaseClient
         tb = token_budget or TokenBudget()
+        # One clock per problem, started here so every node measures against the
+        # same origin. The platform's limit is wall-clock, so this is the budget
+        # that actually decides pass/fail.
+        clock = time_budget or TimeBudget()
+        # Initialize database client (lazy-load on first query)
+        db_client = DatabaseClient(db_dir="database", device="cpu")
         deps = Deps(client=self.client, skills_loader=self.skills_loader,
-                    mcp_client=self.mcp_client, token_budget=tb)
-        return self.app.invoke(initial_state, config={"configurable": {"deps": deps}})
+                    mcp_client=self.mcp_client, token_budget=tb, time_budget=clock,
+                    db_client=db_client, event_sink=event_sink)
+        final_state = self.app.invoke(initial_state, config={"configurable": {"deps": deps}})
+        if isinstance(final_state, dict):
+            final_state["_time_budget"] = clock.snapshot()
+            final_state["_llm_spend_log"] = clock.spend_log()
+        return final_state

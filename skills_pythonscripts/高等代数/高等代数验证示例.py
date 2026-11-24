@@ -1,192 +1,158 @@
-# -*- coding: utf-8 -*-
-"""高等代数 20 题验证脚本
-依赖: pip install sympy
-运行: python 高等代数验证示例.py
-"""
-import sys, io
-sys.stdout = io.TextIOWrapper(sys.stdout.buffer, encoding='utf-8')
+r'''
+# 高等代数：验证提示词与知识点索引
+运行环境：conda activate Competition
+文件性质：这是提示词式验证资料，包含可摘取的 Python/SymPy 代码片段，不是可直接运行的完整矩阵或符号计算程序。
+
+## 使用规则
+- 先确认系数域、维数、矩阵大小、参数范围与重数；计算结果必须回代原多项式、矩阵或线性关系。
+- 群、环、域和 Galois 结构题转抽象代数；实变量极限、收敛和微分型函数方程转数学分析。
+- 题目若给出多个问项，分别保留矩阵、基、坐标、特征值、重数等完整字段。
+
+## 知识点 1：多项式
+- 使用带余除法、Euclid 算法、因式分解和根的重数；不可约性必须相对于指定系数域判断。
+- Vieta 公式、对称多项式和判别式使用前确认首项系数与根的个数/重数。
+- 极小多项式整除特征多项式，并由其根和重根限制 Jordan 结构。
+
+## 知识点 2：行列式与矩阵
+- 行变换改变行列式时同步处理符号和倍数；矩阵可逆等价于行列式非零、满秩等条件需在方阵场景使用。
+- 求逆、秩、零空间和解空间时，将结果代回 $AX=b$ 或 $Av=0$。
+- 参数矩阵要分离秩发生变化的特殊参数值。
+
+## 知识点 3：线性空间与二次型
+- 基、维数、线性无关和张成关系必须在同一空间/同一系数域内讨论。
+- 坐标变换写明基变换矩阵方向；Gram--Schmidt 需保留正交化顺序和零向量情形。
+- 二次型按合同变换化标准形，正定性可用顺序主子式或特征值但要满足对应条件。
+
+## 知识点 4：特征值、对角化与 Jordan 形
+- 特征值由 $\det(\lambda I-A)=0$ 得到，几何重数不超过代数重数。
+- 可对角化要求每个特征值的特征子空间维数之和为 $n$；Jordan 形要给相似变换或块结构依据。
+- max-plus/热带代数题明确采用的加法、乘法和特征方程，不能沿用通常线性代数运算。
+
+## Python 代码片段：多项式、根与因式分解
+```python
 import sympy as sp
 
-x = sp.symbols('x')
-lamb = sp.symbols('lamb')
-results = []
+x = sp.symbols("x")
+# polynomial_expr 和 coefficient_domain 均由题面决定。
+poly = sp.Poly(polynomial_expr, x, domain=coefficient_domain)
+factorization = sp.factor_list(poly)
+roots_with_multiplicity = sp.roots(poly.as_expr(), x)
+remainder = sp.rem(poly, sp.Poly(divisor_expr, x, domain=coefficient_domain))
+```
 
-def check(name, ok, desc=""):
-    results.append((name, "PASS" if ok else "FAIL", desc))
-    if not ok:
-        print(f"  *** FAIL: {desc} ***")
+## Python 代码片段：矩阵秩、零空间与线性方程
+```python
+import sympy as sp
 
-print("=" * 60)
-print("高等代数 20 题验证")
-print("=" * 60)
+A = sp.Matrix(matrix_entries)
+b = sp.Matrix(rhs_entries)
+rank_a = A.rank()
+rank_augmented = A.row_join(b).rank()
+null_basis = A.nullspace()
+solution_set = sp.linsolve((A, b))
+# 若 rank_a != rank_augmented，则无解；参数分类需在文字中保留。
+```
 
-# ===== idx 0: 多项式除法 (x³-3x²+3x-1)/(x-1)=x²-2x+1 =====
-print("\n[0] 多项式除法")
-f0 = x**3 - 3*x**2 + 3*x - 1
-g0 = x - 1
-q0 = sp.quo(f0, g0)
-r0 = sp.rem(f0, g0)
-check("0·商", q0 == x**2 - 2*x + 1, f"q={q0}")
-check("0·余", r0 == 0, f"r={r0}")
+## Python 代码片段：特征值、对角化与 Jordan 形
+```python
+import sympy as sp
 
-# ===== idx 1: Vandermonde det = 2 =====
-print("\n[1] Vandermonde行列式")
-A1 = sp.Matrix([[1,1,1],[1,2,3],[1,4,9]])
-check("1·det=2", sp.det(A1) == 2, f"det={sp.det(A1)}")
+A = sp.Matrix(matrix_entries)
+characteristic_polynomial = A.charpoly().as_expr()
+eigen_data = A.eigenvects()
+diagonalizable = sum(len(vectors) for _, _, vectors in eigen_data) == A.rows
+P, J = A.jordan_form()  # 返回相似变换矩阵 P 和 Jordan 形 J
+jordan_check = sp.simplify(P.inv() * A * P - J)
+```
 
-# ===== idx 2: 逆矩阵 [[1,-1],[0,1]] =====
-print("\n[2] 逆矩阵")
-A2 = sp.Matrix([[1,1],[0,1]])
-check("2·A⁻¹", A2.inv() == sp.Matrix([[1,-1],[0,1]]))
+## Python 代码片段：二次型的合同变换核验
+```python
+import sympy as sp
 
-# ===== idx 3: gcd(x³+1, x²-1)=x+1 =====
-print("\n[3] 最大公因式")
-check("3·gcd", sp.gcd(x**3+1, x**2-1) == x+1)
+Q = sp.Matrix(quadratic_form_matrix)
+congruence_check = sp.simplify(change_of_basis.T * Q * change_of_basis - diagonal_form)
+leading_principal_minors = [Q[:k, :k].det() for k in range(1, Q.rows + 1)]
+# Sylvester 判据只适用于实对称矩阵的正定性判断。
+```
 
-# ===== idx 4: det([[λ,1,1],[1,λ,1],[1,1,λ]])=λ³-3λ+2 =====
-print("\n[4] 含参行列式")
-A4 = sp.Matrix([[lamb,1,1],[1,lamb,1],[1,1,lamb]])
-det4 = sp.factor(sp.det(A4))
-check("4·因式", det4 == (lamb-1)**2*(lamb+2), f"det={det4}")
+## 输出契约
+- 最终答案包含完整多项式、矩阵/基/标准形及参数分类，并给出回代或不变量核验。
+- 不把数值近似根当作精确重根结论，除非题面明确要求近似。
+- 代码结果必须与指定系数域、参数范围和相似/合同变换方向一并解释，不能只粘贴 SymPy 输出。
 
-# ===== idx 5: 基础解系 (2,1,-3), dim=1 =====
-print("\n[5] 基础解系")
-A5 = sp.Matrix([[1,1,1],[2,-1,1]])
-ns5 = A5.nullspace()
-check("5·维数", len(ns5) == 1)
-if len(ns5) == 1:
-    v5 = ns5[0]
-    # 检查与 (2,1,-3) 成比例
-    ratio = sp.simplify(v5[0]/2)
-    check("5·方向", sp.simplify(v5[1]-ratio*1)==0 and sp.simplify(v5[2]-ratio*(-3))==0)
+## 模块级验证代码（与高等代数 skill 的 8 个主模块对应）
 
-# ===== idx 6: rank = 2 =====
-print("\n[6] 矩阵秩")
-A6 = sp.Matrix([[1,2,3],[4,5,6],[7,8,9]])
-check("6·rank=2", A6.rank() == 2)
+## Python 代码片段：模块一 多项式理论
+```python
+import sympy as sp
 
-# ===== idx 7: 二次型配方法 p=2 =====
-print("\n[7] 二次型配方法")
-B7 = sp.Matrix([[1,1,0],[1,2,1],[0,1,1]])
-eig7 = sorted([float(e) for e in B7.eigenvals().keys()], reverse=True)
-p7 = sum(1 for e in eig7 if e > 1e-10)
-q7 = sum(1 for e in eig7 if e < -1e-10)
-check("7·p=2", p7 == 2, f"p={p7}, eig={eig7}")
-check("7·q=0", q7 == 0)
+x = sp.symbols("x")
+poly = sp.Poly(polynomial_expression, x, domain=coefficient_domain)
+quotient, remainder = sp.div(poly, divisor, domain=coefficient_domain)
+discriminant = sp.discriminant(poly.as_expr(), x)
+```
 
-# ===== idx 8: 坐标 (-1,2,1) =====
-print("\n[8] 坐标变换")
-a,b,c = sp.symbols('a b c')
-sol8 = sp.solve([a+b+c-2, b+c-3, c-1], [a,b,c])
-check("8·坐标", sol8 == {a:-1, b:2, c:1}, f"{sol8}")
+## Python 代码片段：模块二 行列式
+```python
+import sympy as sp
 
-# ===== idx 9: Ker dim=2, 基{(-2,1,0),(-1,0,1)} =====
-print("\n[9] 核空间")
-A9 = sp.Matrix([[1,2,1],[2,4,2],[1,2,1]])
-ns9 = A9.nullspace()
-check("9·dim=2", len(ns9) == 2)
-# 验证基与给定基张成同一空间
-v9a = sp.Matrix([-2,1,0])
-v9b = sp.Matrix([-1,0,1])
-# 检查是否在零空间中
-check("9·基向量1", (A9*v9a).is_zero_matrix)
-check("9·基向量2", (A9*v9b).is_zero_matrix)
+A = sp.Matrix(matrix_entries)
+determinant = sp.factor(A.det())
+cofactor_check = sp.simplify(sum(A[0, j] * A.cofactor(0, j) for j in range(A.cols)) - determinant)
+```
 
-# ===== idx 10: 特征值λ=1(二重), 不可对角化 =====
-print("\n[10] 特征值·对角化")
-A10 = sp.Matrix([[1,1],[0,1]])
-eig10 = A10.eigenvects()
-geom_mult = len(eig10[0][2])
-check("10·λ=1二重", eig10[0][1] == 2)
-check("10·几何重数=1", geom_mult == 1, f"几何重数={geom_mult}, 不可对角化")
+## Python 代码片段：模块三 矩阵
+```python
+import sympy as sp
 
-# ===== idx 11: Schmidt正交化 =====
-print("\n[11] Schmidt正交化")
-v1 = sp.Matrix([1,1,0])
-v2 = sp.Matrix([1,0,0])
-v3 = sp.Matrix([0,0,1])
-gs = sp.matrices.GramSchmidt([v1,v2,v3], True)
-# 验证两两正交且模为1
-for i in range(3):
-    for j in range(i+1,3):
-        d = abs(float(gs[i].dot(gs[j])))
-        check(f"11·正交{i}{j}", d < 1e-14, f"<γ{i},γ{j}>={d}")
-    nrm = float(gs[i].norm())
-    check(f"11·模{i}", abs(nrm-1) < 1e-14, f"|γ{i}|={nrm}")
+A = sp.Matrix(matrix_entries)
+inverse = A.inv() if A.det() != 0 else None
+inverse_residual = sp.zeros(A.rows) if inverse is None else sp.simplify(A * inverse - sp.eye(A.rows))
+```
 
-# ===== idx 12: Jordan形 =====
-print("\n[12] Jordan标准形")
-A12 = sp.Matrix([[1,0,0],[2,1,0],[3,4,1]])
-J12 = A12.jordan_form()[0]
-J_exp = sp.Matrix([[1,1,0],[0,1,1],[0,0,1]])
-check("12·Jordan性质", True, f"J={J12.tolist()}")  # sympy返回Jordan形，验证性质即可
-# 验证 (A-I)³=0, (A-I)²≠0
-I12 = sp.eye(3)
-D12 = A12 - I12
-check("12·(A-I)³=0", (D12**3).is_zero_matrix)
-check("12·(A-I)²≠0", not (D12**2).is_zero_matrix)
+## Python 代码片段：模块四 线性方程组
+```python
+import sympy as sp
 
-# ===== idx 13: 正定性 p=3 =====
-print("\n[13] 正定性")
-A13 = sp.Matrix([[1,1,1],[1,4,2],[1,2,2]])
-m1 = sp.det(A13[0:1,0:1])
-m2 = sp.det(A13[0:2,0:2])
-m3 = sp.det(A13)
-check("13·Δ₁=1>0", m1 == 1)
-check("13·Δ₂=3>0", m2 == 3)
-check("13·Δ₃=2>0", m3 == 2)
-eig13 = [float(e) for e in A13.eigenvals().keys()]
-check("13·特征值>0", all(e > 0 for e in eig13), f"eig={eig13}")
+A = sp.Matrix(matrix_entries)
+b = sp.Matrix(rhs_entries)
+rank_gap = A.row_join(b).rank() - A.rank()
+solution_set = sp.linsolve((A, b))
+```
 
-# ===== idx 14: 无关性证明 =====
-print("\n[14] 线性无关性(数值验证)")
-# α₁+α₂, α₁-α₂ 无关性: 过渡矩阵 det≠0
-T14 = sp.Matrix([[1,1],[1,-1]])
-check("14·det≠0", sp.det(T14) == -2)
+## Python 代码片段：模块五 二次型
+```python
+import sympy as sp
 
-# ===== idx 15: 可逆矩阵特征值 =====
-print("\n[15] 特征值·可逆")
-A15 = sp.Matrix([[1,2],[3,4]])
-e15 = list(A15.eigenvals().keys())
-A15inv = A15.inv()
-e15inv = list(A15inv.eigenvals().keys())
-# 验证 1/λ 关系
-for lam in e15:
-    found = any(abs(float(1/lam) - float(mu)) < 1e-10 for mu in e15inv)
-    check(f"15·1/{float(lam):.3f}", found)
+Q = sp.Matrix(quadratic_form_matrix)
+leading_minors = [Q[:k, :k].det() for k in range(1, Q.rows + 1)]
+quadratic_value = (vector.T * Q * vector)[0]
+```
 
-# ===== idx 16: 正交变换保内积 =====
-print("\n[16] 正交变换保内积")
-th = sp.symbols('th')
-Q16 = sp.Matrix([[sp.cos(th),-sp.sin(th)],[sp.sin(th),sp.cos(th)]])
-check("16·QᵀQ=I", sp.simplify(Q16.T * Q16) == sp.eye(2))
+## Python 代码片段：模块六 线性空间与线性变换
+```python
+import sympy as sp
 
-# ===== idx 17: 秩-零化度定理 =====
-print("\n[17] 秩-零化度定理")
-A17 = sp.Matrix([[1,2],[2,4]])
-r17 = A17.rank()
-n17 = len(A17.nullspace())
-check("17·rank+null=n", r17 + n17 == 2, f"{r17}+{n17}=2")
+basis_matrix = sp.Matrix(basis_columns)
+dimension = basis_matrix.rank()
+coordinate_residual = sp.simplify(basis_matrix * coordinates - vector)
+```
 
-# ===== idx 18: gcd(fg,f+g)=1 =====
-print("\n[18] 互素证明(数值验证)")
-pairs18 = [(x+1, x**2), (x**2-1, x), (x**3+1, x**2+1)]
-for f18,g18 in pairs18:
-    d = sp.gcd(f18*g18, f18+g18)
-    check(f"18·({f18},{g18})", sp.degree(d) == 0, f"gcd={d}")
+## Python 代码片段：模块七 欧氏空间
+```python
+import sympy as sp
 
-# ===== idx 19: 同时对角化 =====
-print("\n[19] 同时对角化(数值验证)")
-A19 = sp.Matrix([[2,1],[1,2]])
-B19 = sp.Matrix([[1,-1],[-1,1]])
-check("19·AB=BA", A19*B19 == B19*A19)
-check("19·对称", A19.T==A19 and B19.T==B19)
+gram = sp.Matrix([[u.dot(v) for v in vectors] for u in vectors])
+orthogonality = [sp.simplify(u.dot(v)) for u, v in orthogonal_pairs]
+```
 
-# ===== 汇总 =====
-print("\n" + "=" * 60)
-print("验证汇总")
-print("=" * 60)
-for name, status, desc in results:
-    print(f"  [{name}] {'OK' if status=='PASS' else 'XX'} {desc}")
-p = sum(1 for _, s, _ in results if s == "PASS")
-print(f"\n通过: {p}/{len(results)}")
+## Python 代码片段：模块八 特征值与对角化
+```python
+import sympy as sp
+
+A = sp.Matrix(matrix_entries)
+eigen_data = A.eigenvects()
+geometric_dimensions = {value: len(vectors) for value, _, vectors in eigen_data}
+diagonalizable = sum(geometric_dimensions.values()) == A.rows
+```
+'''

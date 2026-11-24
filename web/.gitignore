@@ -1,0 +1,5 @@
+node_modules/
+dist/
+desktop-*.png
+mobile-*.png
+!public/assets/sail-logo.png

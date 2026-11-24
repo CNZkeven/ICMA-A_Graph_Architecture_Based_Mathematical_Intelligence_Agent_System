@@ -1,0 +1,73 @@
+{
+  "status": "complete",
+  "template_reference": "C:\\Users\\76234\\Desktop\\test\\ppt创作\\ICMAnew\\ppt模板.pptx",
+  "slide_count": 10,
+  "image_pptx": "C:\\Users\\76234\\Desktop\\test\\ppt创作\\ICMAnew\\ICMA_A_Defense_10_image.pptx",
+  "editable_pptx": "C:\\Users\\76234\\Desktop\\test\\ppt创作\\ICMAnew\\ICMA_A_Defense_10_editable.pptx",
+  "editable_pptx_sha256": "955dde1bd7de1e717907b7e5fb757c94686630241b46b806f6ee800c807624ab",
+  "editable_pptx_bytes": 44473103,
+  "run_root": "C:\\Users\\76234\\Desktop\\test\\ppt创作\\ICMAnew\\ppt_work\\ICMA_A_Defense_10\\image2pptx_runs\\20261024_200751_icma_layout_v9",
+  "editable_text_shapes": 341,
+  "editable_picture_shapes": 93,
+  "speaker_notes_slides": 10,
+  "layout_guard": "10/10 strict pass",
+  "powerpoint_render": "10/10 slides opened and exported at 2048x1152",
+  "text_overlap_flags": 0,
+  "text_picture_overlap_flags": "visually checked against all 10 rendered pages",
+  "visual_qa": "Final delivered PPTX opened/exported by PowerPoint; 10/10 final-file slide renders compared to image slides and visually reviewed.",
+  "visual_differences": [
+    {
+      "slide": 1,
+      "mean_abs_diff_0_255": 17.5584,
+      "changed_pixel_fraction_threshold_32": 0.096979
+    },
+    {
+      "slide": 2,
+      "mean_abs_diff_0_255": 15.9723,
+      "changed_pixel_fraction_threshold_32": 0.099472
+    },
+    {
+      "slide": 3,
+      "mean_abs_diff_0_255": 14.6002,
+      "changed_pixel_fraction_threshold_32": 0.101821
+    },
+    {
+      "slide": 4,
+      "mean_abs_diff_0_255": 21.1964,
+      "changed_pixel_fraction_threshold_32": 0.138752
+    },
+    {
+      "slide": 5,
+      "mean_abs_diff_0_255": 14.0189,
+      "changed_pixel_fraction_threshold_32": 0.09536
+    },
+    {
+      "slide": 6,
+      "mean_abs_diff_0_255": 16.4219,
+      "changed_pixel_fraction_threshold_32": 0.109189
+    },
+    {
+      "slide": 7,
+      "mean_abs_diff_0_255": 17.2419,
+      "changed_pixel_fraction_threshold_32": 0.117999
+    },
+    {
+      "slide": 8,
+      "mean_abs_diff_0_255": 9.7236,
+      "changed_pixel_fraction_threshold_32": 0.069907
+    },
+    {
+      "slide": 9,
+      "mean_abs_diff_0_255": 14.3946,
+      "changed_pixel_fraction_threshold_32": 0.090737
+    },
+    {
+      "slide": 10,
+      "mean_abs_diff_0_255": 17.3371,
+      "changed_pixel_fraction_threshold_32": 0.105597
+    }
+  ],
+  "editable_text_and_movable_pictures": true,
+  "quality_note": "The editable version was rendered from PowerPoint and compared against all 10 image slides. Its generated picture layers and live text remain independently editable.",
+  "final_pptx_independent_reopen_export": "10/10"
+}

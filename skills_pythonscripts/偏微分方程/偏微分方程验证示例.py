@@ -1,180 +1,240 @@
-# -*- coding: utf-8 -*-
-"""偏微分方程 20 题验证脚本
-依赖: pip install sympy numpy
-运行: python 偏微分方程验证示例.py
-"""
-import sys, io
-sys.stdout = io.TextIOWrapper(sys.stdout.buffer, encoding='utf-8')
+r'''
+# 偏微分方程：验证提示词与知识点索引
+运行环境：conda activate Competition
+文件性质：这是数学智能体的验证说明，包含可摘取的 Python/SymPy 片段，不是可直接运行的完整 PDE 求解或离散化程序。
+
+## 使用规则
+- 首先写出未知函数、自变量、区域、方程、初始/边界条件和正则性要求；这些条件是解的一部分。
+- 题目核心为有限差分、有限元、截断误差或稳定性时转数值分析；纯抽象算子谱题转泛函分析。
+- 求得表达式后检查 PDE 本身和每条初边条件，避免只验证内部方程。
+
+## 知识点 1：一阶方程与特征线
+- 线性或拟线性 PDE 用特征方程建立不变量；初始曲线必须是非特征的才通常给出局部唯一解。
+- 参数化回代时检查 Jacobian 是否退化、多值解/交叉特征线是否出现。
+
+## 知识点 2：二阶分类与调和函数
+- 对 $Au_{xx}+2Bu_{xy}+Cu_{yy}$ 用 $B^2-AC$ 分类，并说明系数和区域。
+- Laplace 方程解需检验调和性；调和函数可用最大值原理、均值性质和边界唯一性，但必须满足相应正则性。
+
+## 知识点 3：波动、热与分离变量
+- 无界一维波动方程用 d'Alembert 公式并核对初位移/初速度；有界区间根据边界条件选择正弦或余弦特征函数。
+- 热方程的特征展开要说明系数由初值投影得到，且检查边界条件和时间衰减。
+- Fourier 系列/Green 函数必须标明定义区间、边界类型和收敛意义。
+
+## 知识点 4：能量法与形式伴随
+- 能量估计保留积分区域、边界项和符号；能量守恒或衰减取决于边界条件。
+- 形式伴随需经分部积分写清导数转移、系数转置/共轭和边界项，不能只改变符号。
+
+## Python 代码片段：候选解的 PDE 与初边条件回代
+```python
 import sympy as sp
-import numpy as np
 
-x, t, y, r, theta, L = sp.symbols('x t y r theta L')
-n, k = sp.symbols('n k', integer=True, positive=True)
-results = []
+x, y, t = sp.symbols("x y t", real=True)
+# candidate、operator、边界函数和区域均由题面给出。
+pde_residual = sp.simplify(operator(candidate))
+initial_gap = sp.simplify(candidate.subs(t, initial_time) - initial_profile)
+left_boundary_gap = sp.simplify(candidate.subs(x, left_endpoint) - left_boundary)
+right_boundary_gap = sp.simplify(candidate.subs(x, right_endpoint) - right_boundary)
+```
 
-def check(name, condition, desc=""):
-    ok = bool(condition)
-    results.append((name, "✅" if ok else "❌", desc))
-    if not ok:
-        print(f"  *** 验证失败: {desc} ***")
+## Python 代码片段：二阶 PDE 的类型判别
+```python
+import sympy as sp
 
-print("=" * 60)
-print("偏微分方程 20 题验证")
-print("=" * 60)
+# 标准形 A*u_xx + 2*B*u_xy + C*u_yy + ... 中的系数从题面读取。
+discriminant = sp.simplify(B ** 2 - A * C)
+classification_conditions = {
+    "elliptic": sp.Lt(discriminant, 0),
+    "parabolic": sp.Eq(discriminant, 0),
+    "hyperbolic": sp.Gt(discriminant, 0),
+}
+# 含参数时结合题面参数域判断哪个条件成立。
+```
 
-# ===== idx 0: u_t + 2u_x = 0, u=e^{-(x-2t)^2} =====
-print("\n[idx 0] 特征线法: u_t+2u_x=0")
-u0 = sp.exp(-(x - 2*t)**2)
-check("0·方程", sp.simplify(sp.diff(u0, t) + 2*sp.diff(u0, x)) == 0, "u_t+2u_x=0")
-check("0·初值", sp.simplify(u0.subs(t, 0) - sp.exp(-x**2)) == 0, "u(x,0)=e^{-x^2}")
+## Python 代码片段：形式伴随的分部积分辅助
+```python
+import sympy as sp
 
-# ===== idx 1: 二阶分类, Δ=0 =====
-print("\n[idx 1] 分类: u_xx+4u_xy+4u_yy-u_x=0")
-A, B, C_val = 1, 2, 4
-delta = B**2 - A*C_val
-check("1·判别式", delta == 0, f"Δ=B²-AC={delta}→抛物型")
+x = sp.symbols("x", real=True)
+u = sp.Function("u")(x)
+v = sp.Function("v")(x)
+# L_u、candidate_adjoint_v、boundary_term 由分部积分推导，积分端点来自题面。
+lhs_pairing = sp.integrate(v * L_u, (x, left_endpoint, right_endpoint))
+rhs_pairing = sp.integrate(candidate_adjoint_v * u, (x, left_endpoint, right_endpoint))
+green_identity_gap = sp.simplify(lhs_pairing - rhs_pairing - boundary_term)
+# gap 为 0 只核验推导；定义域与边界条件仍须单独说明。
+```
 
-# ===== idx 2: u=arctan(y/x) 调和 =====
-print("\n[idx 2] 调和函数: u=arctan(y/x)")
-u2 = sp.atan(y/x)
-uxx2 = sp.diff(sp.diff(u2, x), x)
-uyy2 = sp.diff(sp.diff(u2, y), y)
-laplace2 = sp.simplify(uxx2 + uyy2)
-check("2·调和", laplace2 == 0, f"u_xx+u_yy={laplace2}")
+## 输出契约
+- 最终答案同时给出方程满足性、区域、初边条件和必要的正则性/唯一性依据。
+- 未给边界或初始资料时，说明只能给通解族或表示式，不能虚构唯一解。
+- 代码只辅助回代和符号整理；特征线非退化、边界正则性和唯一性仍须根据题面写出。
 
-# ===== idx 3: u_t+uu_x=0, u=x/(1+t) =====
-print("\n[idx 3] 拟线性: u_t+uu_x=0")
-u3 = x/(1+t)
-check("3·方程", sp.simplify(sp.diff(u3, t) + u3*sp.diff(u3, x)) == 0)
-check("3·初值", sp.simplify(u3.subs(t, 0) - x) == 0)
+## 模块级验证代码（与偏微分方程 skill 的 19 个编号模块对应）
 
-# ===== idx 4: d'Alembert, u=sinx·cos2t =====
-print("\n[idx 4] d'Alembert: u_tt=4u_xx")
-u4 = sp.sin(x)*sp.cos(2*t)
-check("4·方程", sp.simplify(sp.diff(u4, t, 2) - 4*sp.diff(u4, x, 2)) == 0)
-check("4·初值1", sp.simplify(u4.subs(t, 0) - sp.sin(x)) == 0)
-check("4·初值2", sp.simplify(sp.diff(u4, t).subs(t, 0)) == 0)
+## Python 代码片段：模块1 一阶线性 PDE 特征线
+```python
+import sympy as sp
 
-# ===== idx 5: u_t=u_xx, u=e^{-4t}sin2x =====
-print("\n[idx 5] 热传导: u_t=u_xx, u(0)=u(π)=0")
-u5 = sp.exp(-4*t)*sp.sin(2*x)
-check("5·方程", sp.simplify(sp.diff(u5, t) - sp.diff(u5, x, 2)) == 0)
-check("5·边界0", sp.simplify(u5.subs(x, 0)) == 0)
-check("5·边界π", sp.simplify(u5.subs(x, sp.pi)) == 0)
-check("5·初值", sp.simplify(u5.subs(t, 0) - sp.sin(2*x)) == 0)
+x, y, t = sp.symbols("x y t", real=True)
+characteristic_gap = sp.simplify(sp.diff(x_characteristic, t) - coefficient_a)
+solution_gap = sp.simplify(sp.diff(candidate, t) + coefficient_a * sp.diff(candidate, x) - source)
+```
 
-# ===== idx 6: Δu=0矩形域, u=sinhy/sinhπ·sinx =====
-print("\n[idx 6] 拉普拉斯矩形域")
-u6 = sp.sinh(y)/sp.sinh(sp.pi)*sp.sin(x)
-lap6 = sp.simplify(sp.diff(u6, x, 2) + sp.diff(u6, y, 2))
-check("6·调和", lap6 == 0, f"Δu={lap6}")
-check("6·边界x=0", sp.simplify(u6.subs(x, 0)) == 0)
-check("6·边界x=π", sp.simplify(u6.subs(x, sp.pi)) == 0)
-check("6·边界y=0", sp.simplify(u6.subs(y, 0)) == 0)
-check("6·边界y=π", sp.simplify(u6.subs(y, sp.pi) - sp.sin(x)) == 0)
+## Python 代码片段：模块2 一阶拟线性 PDE 特征线
+```python
+import sympy as sp
 
-# ===== idx 7: Fourier变换, u=1/√(1+4t)·exp(-x²/(1+4t)) =====
-print("\n[idx 7] Fourier变换热传导")
-u7 = 1/sp.sqrt(1+4*t)*sp.exp(-x**2/(1+4*t))
-check("7·方程", sp.simplify(sp.diff(u7, t) - sp.diff(u7, x, 2)) == 0)
-check("7·初值", sp.simplify(u7.subs(t, 0) - sp.exp(-x**2)) == 0)
+characteristic_system = (sp.Eq(sp.diff(x_curve, t), a_field),
+                         sp.Eq(sp.diff(y_curve, t), b_field),
+                         sp.Eq(sp.diff(u_curve, t), source_field))
+invariant_gap = sp.simplify(invariant.subs({x: x_curve, y: y_curve}).diff(t))
+```
 
-# ===== idx 8: 圆域Δu=0, u=r²cos2θ =====
-print("\n[idx 8] 圆域拉普拉斯: u=r²cos2θ")
-r_s, th = sp.symbols('r_s th')
-u8 = r_s**2*sp.cos(2*th)
-lap8_polar = sp.diff(u8, r_s, 2) + (1/r_s)*sp.diff(u8, r_s) + (1/r_s**2)*sp.diff(u8, th, 2)
-check("8·极坐标Δu=0", sp.simplify(lap8_polar) == 0)
-# 直角坐标验证: u = x²-y²
-u8_xy = x**2 - y**2
-check("8·直角Δu=0", sp.simplify(sp.diff(u8_xy, x, 2) + sp.diff(u8_xy, y, 2)) == 0)
+## Python 代码片段：模块3 二阶 PDE 分类判别
+```python
+import sympy as sp
 
-# ===== idx 9: 非齐次边界稳态 =====
-print("\n[idx 9] 非齐次边界: 稳态v=x")
-check("9·稳态v''=0", True)  # v(x)=x满足v''=0
-check("9·v(0)=0, v(1)=1", True)
-# Fourier系数验证
-b1 = 2*(-1)**1/(1*sp.pi)
-b2 = 2*(-1)**2/(2*sp.pi)
-print(f"  前两个Fourier系数: b₁={float(b1):.4f}, b₂={float(b2):.4f}")
-check("9·系数", abs(float(b1) + 2/sp.pi) < 1e-10 and abs(float(b2) - 1/sp.pi) < 1e-10)
+discriminant = sp.simplify(B ** 2 - A * C)
+classification = sp.Piecewise(("elliptic", discriminant < 0),
+                              ("parabolic", sp.Eq(discriminant, 0)),
+                              ("hyperbolic", discriminant > 0))
+```
 
-# ===== idx 10: u_x+yu_y=0, u=sin(y e^{-x}) =====
-print("\n[idx 10] 特征线含参: u=sin(ye^{-x})")
-u10 = sp.sin(y*sp.exp(-x))
-check("10·方程", sp.simplify(sp.diff(u10, x) + y*sp.diff(u10, y)) == 0)
-check("10·初值", sp.simplify(u10.subs(x, 0) - sp.sin(y)) == 0)
+## Python 代码片段：模块4 调和函数与拉普拉斯方程
+```python
+import sympy as sp
 
-# ===== idx 11: u_tt=u_xx, u=cos3t·sin3x =====
-print("\n[idx 11] 波动分离变量: u=cos3t·sin3x")
-u11 = sp.cos(3*t)*sp.sin(3*x)
-check("11·方程", sp.simplify(sp.diff(u11, t, 2) - sp.diff(u11, x, 2)) == 0)
-check("11·边界0", sp.simplify(u11.subs(x, 0)) == 0)
-check("11·边界π", sp.simplify(u11.subs(x, sp.pi)) == 0)
-check("11·初值", sp.simplify(u11.subs(t, 0) - sp.sin(3*x)) == 0)
-check("11·初速", sp.simplify(sp.diff(u11, t).subs(t, 0)) == 0)
+laplacian = sp.simplify(sp.diff(candidate, x, 2) + sp.diff(candidate, y, 2))
+mean_value_gap = sp.simplify(boundary_average - candidate.subs({x: center_x, y: center_y}))
+```
 
-# ===== idx 12: 半无界反射, u=sinx·cost =====
-print("\n[idx 12] 半无界反射: u=sinx·cost")
-u12 = sp.sin(x)*sp.cos(t)
-check("12·方程", sp.simplify(sp.diff(u12, t, 2) - sp.diff(u12, x, 2)) == 0)
-check("12·边界", sp.simplify(u12.subs(x, 0)) == 0)
-check("12·初值", sp.simplify(u12.subs(t, 0) - sp.sin(x)) == 0)
-check("12·初速", sp.simplify(sp.diff(u12, t).subs(t, 0)) == 0)
+## Python 代码片段：模块5 波动方程行波法与分离变量
+```python
+import sympy as sp
 
-# ===== idx 13: 非齐次热传导, u=¼(1-e^{-4t})sin2x =====
-print("\n[idx 13] 非齐次热传导")
-u13 = sp.Rational(1,4)*(1-sp.exp(-4*t))*sp.sin(2*x)
-rhs13 = sp.diff(u13, t) - sp.diff(u13, x, 2)
-check("13·方程", sp.simplify(rhs13 - sp.sin(2*x)) == 0)
-check("13·边界0", sp.simplify(u13.subs(x, 0)) == 0)
-check("13·边界π", sp.simplify(u13.subs(x, sp.pi)) == 0)
-check("13·初值", sp.simplify(u13.subs(t, 0)) == 0)
+x, t = sp.symbols("x t", real=True)
+wave_residual = sp.simplify(sp.diff(candidate, t, 2) - speed ** 2 * sp.diff(candidate, x, 2))
+initial_displacement_gap = sp.simplify(candidate.subs(t, 0) - initial_profile)
+```
 
-# ===== idx 14: Green恒等式证唯一性 =====
-print("\n[idx 14] 能量方法·唯一性(逻辑验证)")
-check("14·推理正确", True, "Green第一恒等式→∫|∇u|²=0→u≡0")
+## Python 代码片段：模块6 热传导方程分离变量
+```python
+import sympy as sp
 
-# ===== idx 15: 极值原理 =====
-print("\n[idx 15] 极值原理(逻辑验证)")
-eps = sp.symbols('eps', positive=True)
-v_check = sp.simplify(sp.diff(0 - eps*t, t) - sp.diff(0 - eps*t, x, 2))
-check("15·v_t-v_xx=-ε", v_check == -eps)
+heat_residual = sp.simplify(sp.diff(candidate, t) - diffusivity * sp.diff(candidate, x, 2))
+left_gap = sp.simplify(candidate.subs(x, left_endpoint))
+right_gap = sp.simplify(candidate.subs(x, right_endpoint))
+```
 
-# ===== idx 16: 能量积分唯一性 =====
-print("\n[idx 16] 能量积分唯一性(逻辑验证)")
-# E'(t) = ∫(w_t w_tt + a² w_x w_xt) dx, 分部积分得 a²[w_x w_t]_0^L = 0
-check("16·推理正确", True, "E'(t)=a²[w_x w_t]_0^L=0→E(t)常数→w≡0")
+## Python 代码片段：模块7 傅里叶变换法
+```python
+import sympy as sp
 
-# ===== idx 17: 依赖域 =====
-print("\n[idx 17] 特征线依赖域")
-x0, t0, c_s = sp.symbols('x0 t0 c_s')
-u17 = sp.Function('u')(x0 + c_s*t, t)  # 抽象验证
-# d/dt[u(x0+ct,t)] = u_x*c + u_t = u_t + c u_x
-check("17·链式法则", True, "d/dt[u(x₀+ct,t)]=u_t+cu_x=0")
+x, omega = sp.symbols("x omega", real=True)
+transform = sp.integrate(initial_profile * sp.exp(-sp.I * omega * x), (x, -sp.oo, sp.oo))
+transform_residual = sp.simplify(sp.I * omega * transform - transformed_derivative)
+```
 
-# ===== idx 18: 格林函数对称性 =====
-print("\n[idx 18] 格林函数对称性(1D数值验证)")
-# 1D区间[0,1]格林函数: G(x,ξ)=x(1-ξ) (x≤ξ), ξ(1-x) (x≥ξ)
-xi_vals = [0.2, 0.7]
-for xi_val in xi_vals:
-    for x_val in xi_vals:
-        G1 = min(x_val, xi_val)*(1-max(x_val, xi_val))
-        G2 = min(xi_val, x_val)*(1-max(xi_val, x_val))
-        assert abs(G1 - G2) < 1e-15
-check("18·对称性", True, "G(x,ξ)=G(ξ,x)数值验证通过")
+## Python 代码片段：模块8 拉普拉斯方程圆域与极坐标
+```python
+import sympy as sp
 
-# ===== idx 19: L²稳定性 =====
-print("\n[idx 19] 热传导L²稳定性(逻辑验证)")
-# E(t)=½∫w²dx, E'(t)=∫ww_xx dx = -∫w_x² dx ≤ 0
-check("19·稳定性", True, "E'(t)=-∫w_x²dx≤0→E(t)≤E(0)")
+r, theta = sp.symbols("r theta", positive=True, real=True)
+polar_laplacian = sp.simplify(sp.diff(candidate, r, 2) + sp.diff(candidate, r) / r
+                              + sp.diff(candidate, theta, 2) / r ** 2)
+```
 
-# ===== 汇总 =====
-print("\n" + "=" * 60)
-print("验证汇总")
-print("=" * 60)
-for name, status, desc in results:
-    print(f"  [{name}] {status} {desc}")
-passed = sum(1 for _, s, _ in results if "✅" in s)
-print(f"\n通过: {passed}/{len(results)}")
-print("=" * 60)
+## Python 代码片段：模块9 非齐次边界与稳态分析
+```python
+import sympy as sp
+
+steady_residual = sp.simplify(sp.diff(steady_solution, x, 2) + forcing)
+boundary_gaps = (sp.simplify(steady_solution.subs(x, left)),
+                 sp.simplify(steady_solution.subs(x, right)))
+```
+
+## Python 代码片段：模块10 半无界问题反射法
+```python
+import sympy as sp
+
+reflected = initial_profile(-x)
+odd_extension_gap = sp.simplify(extended_profile.subs(x, -x) + extended_profile)
+boundary_value = sp.simplify(candidate.subs(x, boundary))
+```
+
+## Python 代码片段：模块11 非齐次方程特征展开法
+```python
+import sympy as sp
+
+mode_coefficient = sp.integrate(forcing * eigenfunction, (x, left, right))
+mode_equation_gap = sp.simplify(sp.diff(mode_amplitude, t) + eigenvalue * mode_amplitude
+                                - mode_coefficient)
+```
+
+## Python 代码片段：模块12 能量方法与唯一性
+```python
+import sympy as sp
+
+energy = sp.integrate(sp.diff(candidate, t) ** 2 + speed ** 2 * sp.diff(candidate, x) ** 2,
+                      (x, left, right))
+energy_derivative = sp.simplify(sp.diff(energy, t))
+```
+
+## Python 代码片段：模块13 极值原理
+```python
+import sympy as sp
+
+interior_laplacian = sp.simplify(sp.diff(candidate, x, 2) + sp.diff(candidate, y, 2))
+boundary_values = [candidate.subs(point) for point in boundary_points]
+maximum_bound = max(boundary_values)
+```
+
+## Python 代码片段：模块14 格林函数与对称性
+```python
+import sympy as sp
+
+green_residual = sp.simplify(operator(green_function) - delta_source)
+symmetry_gap = sp.simplify(green_function(x, xi) - green_function(xi, x))
+```
+
+## Python 代码片段：模块15 依赖域与传播特征
+```python
+import sympy as sp
+
+cone_gap = sp.simplify((x - source_x) ** 2 - speed ** 2 * (t - source_t) ** 2)
+domain_check = sp.simplify(cone_gap.subs({x: observation_x, t: observation_t}))
+```
+
+## Python 代码片段：模块16 稳定性估计
+```python
+import sympy as sp
+
+norm_initial = sp.integrate(initial_profile ** 2, (x, left, right))
+norm_solution = sp.integrate(candidate ** 2, (x, left, right))
+stability_gap = sp.simplify(norm_solution - stability_constant * norm_initial)
+```
+
+## Python 代码片段：模块17 通用解题方法论
+```python
+required_fields = (unknown_function, domain, equation, initial_data, boundary_data)
+missing_fields = [name for name, value in zip(field_names, required_fields) if value is None]
+```
+
+## Python 代码片段：模块18 习题解题思路索引表
+```python
+from collections import Counter
+
+topic_counts = Counter(topic_labels)
+index_consistency = all(index in known_indices for index in requested_indices)
+```
+
+## Python 代码片段：模块19 竞赛拓展——散度型算子形式伴随
+```python
+import sympy as sp
+
+formal_pairing = sp.integrate(test_function * divergence_operator(candidate), (x, left, right))
+adjoint_pairing = sp.integrate(formal_adjoint(test_function) * candidate, (x, left, right))
+green_gap = sp.simplify(formal_pairing - adjoint_pairing - boundary_term)
+```
+'''

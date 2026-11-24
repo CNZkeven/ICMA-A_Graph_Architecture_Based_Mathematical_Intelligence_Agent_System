@@ -10,10 +10,25 @@ sample_outputs/
 *.log
 
 # Local evaluation/test artifacts intentionally excluded from the published system repo
+# NOTE: `tests/` is deliberately NOT ignored — the offline regression suite is a
+# published quality asset (README §7.1 documents it as such). Only ad-hoc local
+# scratch dirs are excluded.
 test/
-tests/
 competition/
 .codegraph/
+.worktrees/
 sample_data/
 *_output*/
 *_outputs*/
+dev_test/
+demo_data/*.sqlite3
+
+# WAL sidecar files of the ignored demo database
+demo_data/*.sqlite3-*
+.vscode/
+
+# Frontend dependencies and build output (also covered by web/.gitignore)
+web/node_modules/
+web/dist/
+.demo-runtime/
+.venv/

@@ -14,8 +14,89 @@ class AnswerExtractor:
     def extract_from_text(text: str):
         if not text:
             return None
-        m = re.search(r"最终答案[：:]\s*(.+?)(?:\n|$)", text)
+        m = re.search(r"(?:最终答案|答案|结论)[：:]\s*(.+?)(?:\n|$)", text)
         return m.group(1).strip() if m else None
+
+
+def extract_boxed_answer(text: str) -> str:
+    """Return the last balanced ``\\boxed{...}`` body in *text*.
+
+    A simple non-greedy regex stops at the first nested brace (for example in
+    ``\\boxed{\\frac{1}{2}}``).  This small scanner is deliberately independent of
+    SymPy: the value is still checked by the caller's fragment/placeholder gates.
+    """
+    source = str(text or "")
+    marker = re.compile(r"\\boxed\s*\{")
+    found = []
+    for match in marker.finditer(source):
+        depth = 1
+        escaped = False
+        for index in range(match.end(), len(source)):
+            char = source[index]
+            if escaped:
+                escaped = False
+                continue
+            if char == "\\":
+                escaped = True
+                continue
+            if char == "{":
+                depth += 1
+            elif char == "}":
+                depth -= 1
+                if depth == 0:
+                    value = source[match.end():index].strip()
+                    if value:
+                        found.append(value)
+                    break
+    return found[-1] if found else ""
+
+
+def extract_answer_fallback(text: str) -> str:
+    """Recover an answer when the model omitted the Markdown section contract.
+
+    The order is conservative: a final boxed value, an explicit answer/结论 line,
+    then the last payload-bearing line.  This function never tries to evaluate a
+    mathematical expression or invent a value; it only preserves model text.
+
+    2026-08-09 评委报告模式 B：最后一层"任取带数字的行"曾把思维流碎片
+    （"-177. Strict. So equality only when all equal."、"7, etc. We already
+    tested that and it worked."）当成答案。该层现在必须通过洁净度白名单。
+    """
+    return extract_answer_fallback_with_source(text)[0]
+
+
+def extract_answer_fallback_with_source(text: str) -> tuple:
+    """`extract_answer_fallback`，另返回命中层级。
+
+    层级标签供调用方区分置信度（2026-08-10 评委报告 4.2）：``boxed`` 与
+    ``labelled`` 是模型显式提交的结论（截断响应里出现也算有效产出）；
+    ``payload_line`` 是从散文里扫出的最后信息行，置信度与 salvage 同级——
+    耗尽判定必须把它视为"没有产出"，让压缩重试先行。
+    """
+    from utils.answer_cleanliness import looks_committed_result, looks_derivation_fragment
+
+    source = str(text or "").strip()
+    if not source:
+        return "", ""
+    boxed = extract_boxed_answer(source)
+    if boxed:
+        return boxed, "boxed"
+
+    labelled = list(re.finditer(
+        r"(?im)(?:^|[\n。；;])\s*(?:最终答案|答案|结论)\s*[：:]\s*([^\n]+)",
+        source,
+    ))
+    if labelled:
+        return labelled[-1].group(1).strip().strip("`"), "labelled"
+
+    lines = [line.strip().strip("`*_ ") for line in source.splitlines() if line.strip()]
+    for line in reversed(lines):
+        if len(line) > 600 or re.match(r"^#{1,6}\s", line):
+            continue
+        if re.search(r"[=<>]|\\(?:frac|sqrt|boxed)|\d|正确|错误|成立|收敛|发散|存在|唯一", line):
+            if looks_committed_result(line) and not looks_derivation_fragment(line):
+                return line, "payload_line"
+    return "", ""
 
 
 # 明显"话说一半"的结尾：冒号/逗号/运算符/引导语，后面本应还有内容
@@ -81,9 +162,17 @@ def looks_like_latex_fragment(text: str) -> bool:
 
 
 _ENUM_MARK_RE = re.compile(r"[（(]\s*[1-9一二三四五]\s*[）)]|[①②③④⑤]|第[一二三四五]问")
+#: 提问动词。"找出/求出/列出" 等此前不在首个动词表内，使 "试找出A，也找出B" 漏判。
+_ASK_VERB = r"(?:求出?|计算|写出|给出|确定|找出|列出|求解|讨论|判断|证明|描述|说明|分析|比较|证)"
+#: 连接两个问项的词。原表只有 并/及/以及/、并，漏掉 也/同时/再/然后/接着 ——
+#: ISL 博弈题 "试找出使甲有必胜策略的所有 λ，也找出使乙有必胜策略的所有 λ" 因此
+#: 被判为单问项，而该标志决定 _preferred_answer 是否允许用更完整的候选替换半个答案。
+_ASK_CONJUNCTION = r"(?:，?\s*(?:并|及|以及|、并|也|同时|再|然后|接着|另外|此外))"
 _MULTI_ASK_RE = re.compile(
-    r"(?:求|计算|写出|给出|确定)[^。；;]*?(?:，?\s*并|及|以及|、并)"
-    r"[^。；;]*?(?:求|计算|证明|判断|讨论|写出|给出|确定|描述|说明|分析|比较)"
+    # 第二个问项通常带动词；"求均值，以及标准差" 省略动词，故动词可选，
+    # 但连接词后必须仍有实质内容（≥2 字），避免把 "并" 当副词的单问项误判。
+    r"%s[^。；;]*?%s\s*[^。；;]*?(?:%s[^。；;]*|[^。；;，,]{2,})"
+    % (_ASK_VERB, _ASK_CONJUNCTION, _ASK_VERB)
 )
 
 
@@ -97,5 +186,34 @@ def is_multi_part_problem(problem: str) -> bool:
     if "分别" in p and re.search(r"求|计算|写出|给出|证明|讨论", p):
         return True
     if _MULTI_ASK_RE.search(p):
+        return True
+    return False
+
+
+# 填空空位：ASCII 下划线 / 全角下划线 / 连续破折号
+_BLANK_RE = re.compile(r"_{3,}|＿{2,}|—{3,}")
+# 选择题：行首选项标记，或题面以空括号收尾（"（　）"）
+_CHOICE_RE = re.compile(r"(?m)^\s*[A-D][．.、)）]\s*\S|[（(]\s*[）)]\s*[。.]?\s*$")
+_ANSWER_ONLY_HINT_RE = re.compile(r"只需?给出答案|直接写出|不需要(?:写)?过程|无需过程")
+
+
+def is_answer_only_problem(problem: str) -> bool:
+    """题面是否只要求最终答案（填空、选择、明确声明不需过程）。
+
+    评委.md：填空题可给出最终结果、选择题可直接给出选项，而"其余需要推导的题目
+    也应保留支撑结论所需的关键步骤"。这个判定就是二者的分界：True → 收敛为纯答案，
+    False → 答案后附关键推导步骤。
+
+    判定宁严勿松：漏判（当成需推导）只是多输出几行步骤，误判（当成填空）会丢掉
+    判分需要的推导。
+    """
+    p = (problem or "").strip()
+    if not p:
+        return False
+    if _BLANK_RE.search(p):
+        return True
+    if _CHOICE_RE.search(p):
+        return True
+    if _ANSWER_ONLY_HINT_RE.search(p):
         return True
     return False
